@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: baytak-care-postgres
+    restart: unless-stopped
+
+    ports:
+      - "5432:5432"
+
+    environment:
+      POSTGRES_USER: baytak
+      POSTGRES_PASSWORD: baytak_dev_password
+      POSTGRES_DB: baytak_care
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

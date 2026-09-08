@@ -10,6 +10,8 @@ datasource db {
 model Property {
   id                  String               @id @default(uuid())
   address             String
+  ownerName           String
+  caretakerName       String
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -17,16 +19,33 @@ model Property {
 }
 
 model MaintenanceRequest {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  status      MaintenanceRequestStatus @default(PENDING)
+  id            String   @id @default(uuid())
+  title         String
+  description   String?
+  requestType   String
+  photoUrl      String?
+  estimatedCost Decimal?
+  status        MaintenanceRequestStatus @default(PENDING)
 
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  activityLogs ActivityLog[]
+}
+
+model ActivityLog {
+  id             String   @id @default(uuid())
+  action         String
+  previousStatus MaintenanceRequestStatus?
+  newStatus      MaintenanceRequestStatus?
+  performedBy    String
+  createdAt      DateTime @default(now())
+
+  maintenanceRequestId String
+  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
 }
 
 enum MaintenanceRequestStatus {

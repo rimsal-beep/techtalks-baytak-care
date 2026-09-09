@@ -56,6 +56,24 @@ export default function NewRequestPage() {
 
             <div>
               <label
+                htmlFor="title"
+                className="mb-2 block text-sm font-medium text-zinc-900"
+              >
+                Title
+              </label>
+
+              <input
+                id="title"
+                name="title"
+                type="text"
+                required
+                placeholder="Enter request title..."
+                className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-900"
+              />
+            </div>
+
+            <div>
+              <label
                 htmlFor="requestType"
                 className="mb-2 block text-sm font-medium text-zinc-900"
               >

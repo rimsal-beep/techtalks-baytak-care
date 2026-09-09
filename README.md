@@ -57,7 +57,14 @@ docker compose up -d
 
 This starts the PostgreSQL database container on port `5432`.
 
-### 4. Start the development server
+### 4. Generate Prisma client and apply migrations
+
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
+
+### 5. Start the development server
 
 ```bash
 npm run dev
@@ -65,7 +72,7 @@ npm run dev
 
 Open `http://localhost:3000` in your browser.
 
-### 5. Stop the database
+### 6. Stop the database
 
 When needed:
 

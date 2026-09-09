@@ -19,6 +19,7 @@ model Property {
 model MaintenanceRequest {
   id          String   @id @default(uuid())
   title       String
+  requestType String
   description String?
   status      MaintenanceRequestStatus @default(PENDING)
 

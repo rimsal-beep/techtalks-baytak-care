@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 export default function NewRequestPage() {
   const [requestType, setRequestType] = useState("Inspection");
   const [submitted, setSubmitted] = useState(false);
+  
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -220,4 +221,5 @@ export default function NewRequestPage() {
       </div>
     </main>
   );
+  
 }

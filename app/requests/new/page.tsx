@@ -1,14 +1,30 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { createMaintenanceRequest } from "../../actions/maintenance";
 
 export default function NewRequestPage() {
   const [requestType, setRequestType] = useState("Inspection");
   const [submitted, setSubmitted] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(true);
+
+    const formData = new FormData(event.currentTarget);
+
+    const response = await createMaintenanceRequest({
+      title: formData.get("title") as string,
+      requestType: formData.get("requestType") as string,
+      description: formData.get("description") as string,
+      propertyId: formData.get("propertyId") as string,
+    });
+
+    if (response.success) {
+      setSubmitted(true);
+    } else {
+      setSubmitted(false);
+      alert(response.error);
+    }
   }
 
   return (
@@ -52,14 +68,15 @@ export default function NewRequestPage() {
 
               <select
                 id="property"
-                name="property"
+                name="propertyId"
                 required
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="Beirut Apartment">Beirut Apartment</option>
-                <option value="Mount Lebanon House">
-                  Mount Lebanon House
-                </option>
+                <option value="beirut-apartment">Beirut Apartment</option>
+
+                <option value="mount-lebanon-house">
+                   Mount Lebanon House
+                     </option>
               </select>
             </div>
 
@@ -194,7 +211,7 @@ export default function NewRequestPage() {
             {/* Success message */}
             {submitted && (
               <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
-                Request form is ready to be submitted.
+                Request submitted successfully.
               </div>
             )}
 

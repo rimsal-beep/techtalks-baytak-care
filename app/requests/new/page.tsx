@@ -72,10 +72,11 @@ export default function NewRequestPage() {
                 required
                 className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="test-property-1">Beirut Apartment</option>
-                <option value="test-property-1">
-                  Mount Lebanon House
-                </option>
+                <option value="beirut-apartment">Beirut Apartment</option>
+
+                <option value="mount-lebanon-house">
+                   Mount Lebanon House
+                     </option>
               </select>
             </div>
 

@@ -16,6 +16,7 @@ model Property {
   updatedAt           DateTime             @updatedAt
 
   maintenanceRequests MaintenanceRequest[]
+   users               User[]
 }
 
 model MaintenanceRequest {
@@ -54,4 +55,18 @@ enum MaintenanceRequestStatus {
   IN_PROGRESS
   COMPLETED
   REJECTED
+}
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  propertyId   String
+  property     Property @relation(fields: [propertyId], references: [id])
+  createdAt    DateTime @default(now())
+}
+
+enum UserRole {
+  OWNER
+  CARETAKER
 }

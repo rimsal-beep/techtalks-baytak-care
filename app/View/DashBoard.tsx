@@ -2,32 +2,36 @@ import DashboardLayout from'../Components/DashBoardCom/DashBoardLayout'
 import { DisplayItemData } from '../Components/DashBoardCom/RequestsItem';
 import { SummeryCard } from '../Components/DashBoardCom/SummeryCard';
 import { Status } from '../Types/DashboardTypes';
-import{ItemData} from '../Types/DashboardTypes'
+import{ItemData} from '../Types/DashboardTypes';
+import drainPipeLeak from "../Images/Drain Pipe Leak.png";
+import generatorNotStarting from "../Images/generator not starting.png";
+import lightBulb from "../Images/Light bulb.png";
+import waterHeater from "../Images/water heater.png";
 function Dashboard(){
     const fakeItems: ItemData[] = [
   {
-    img: "/images/leak.png",
+    img: drainPipeLeak,
     Title: "Bathroom water leak",
     Date: "Sep 2, 2026",
     cost: 180,
     status: Status.Pending,
   },
   {
-    img: "/images/generator.png",
+    img: generatorNotStarting,
     Title: "Generator not starting",
     Date: "Aug 15, 2026",
     cost: 130,
     status: Status.InProgress,
   },
   {
-    img: "/images/light.png",
+    img: lightBulb,
     Title: "Kitchen light fixture",
     Date: "Aug 20, 2026",
     cost: 45,
     status: Status.Completed,
   },
   {
-    img: "/images/heater.png",
+    img: waterHeater,
     Title: "Water heater replacement",
     Date: "Aug 10, 2026",
     cost: 320,

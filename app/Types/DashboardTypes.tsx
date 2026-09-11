@@ -1,5 +1,4 @@
-import { Interface } from "readline";
-import { SummeryCard } from "../Components/DashBoardCom/SummeryCard";
+import type { StaticImageData } from "next/image";
 
 enum Status {
   Total = "Total",
@@ -14,7 +13,7 @@ interface SummeryData {
   status: Status;
 }
 interface ItemData {
-  img:string;
+  img: StaticImageData;
   Title:string;
   Date:string;
   cost:number;

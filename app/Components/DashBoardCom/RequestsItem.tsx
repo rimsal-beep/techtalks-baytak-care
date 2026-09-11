@@ -6,7 +6,7 @@ function DisplayItemData(Props:ItemData){
     return(<>
     
     <div>
-        <img alt="Not found" src={Props.img}/>
+        <img alt={Props.Title} src={Props.img.src}/>
         <div>
             <p>{Props.Title}</p>
             <small>{Props.Date+":"+Props.cost}</small>

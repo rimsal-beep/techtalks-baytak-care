@@ -19,6 +19,18 @@ interface ItemData {
   cost:number;
   status:Status;
 }
+interface MaintenanceRequest {
+  id: string;
+  title: string;
+  description?: string;
+  requestType: string;
+  photoUrl?: string;
+  estimatedCost?: number;
+  status: "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";
+  propertyId: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export { Status };
-export type { SummeryData,ItemData };
+export type { SummeryData,ItemData,MaintenanceRequest };

@@ -6,6 +6,7 @@ import { createMaintenanceRequest } from "../../actions/maintenance";
 export default function NewRequestPage() {
   const [requestType, setRequestType] = useState("Inspection");
   const [submitted, setSubmitted] = useState(false);
+  
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -237,4 +238,5 @@ export default function NewRequestPage() {
       </div>
     </main>
   );
+  
 }

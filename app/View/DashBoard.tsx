@@ -6,8 +6,9 @@ import { DisplayItemData } from '../Components/DashBoardCom/RequestsItem';
 import { SummeryCard } from '../Components/DashBoardCom/SummeryCard';
 import { Status } from '../Types/DashboardTypes';
 import { MaintenanceRequest } from '../Types/DashboardTypes';
+import { cookies } from "next/headers";
 function Dashboard(){
-  const propertyId = process.env.NEXT_PUBLIC_PROPERTY_ID ?? "";
+  const propertyId = getpropertyId();
   const [items, setItems] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -57,6 +58,12 @@ function Dashboard(){
 
 }
 
+async function getpropertyId(){
+
+  const cookieStore = cookies();
+  const propertyId = (await cookieStore).get("propertyId")?.value;
+  return propertyId;
+}
 
 
 

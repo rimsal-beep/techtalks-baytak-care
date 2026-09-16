@@ -1,0 +1,249 @@
+:global(*) {
+  box-sizing: border-box;
+}
+
+:global(body) {
+  margin: 0;
+  background: #f4f5f3;
+  color: #172033;
+}
+
+.Body {
+  width: min(100%, 752px);
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 30px 28px;
+  background: #f8f8f6;
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 74px;
+  margin: 0 -30px;
+  padding: 0 30px;
+  border-bottom: 1px solid #e1e4e7;
+  background: #ffffff;
+}
+
+.header img {
+  width: 33px;
+  height: 33px;
+  border-radius: 9px;
+  background: #2458c8;
+  font-size: 0;
+  object-fit: cover;
+}
+
+.header h1 {
+  margin: 0;
+  color: #182132;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.25px;
+}
+
+.Body main {
+  padding-top: 31px;
+}
+
+.Body main > small {
+  display: block;
+  color: #2b5bc5;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: 0.15px;
+}
+
+.Body main > h2 {
+  margin: 6px 0 22px;
+  color: #172033;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -1.1px;
+  line-height: 1.08;
+}
+
+/* Summary cards */
+.Body main > div:first-of-type {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 36px;
+}
+
+.Body main > div:first-of-type > div {
+  min-height: 89px;
+  padding: 21px 20px 15px;
+  border: 1px solid #e0e4e8;
+  border-radius: 15px;
+  background: #ffffff;
+  box-shadow: 0 1px 1px rgb(19 32 52 / 2%);
+}
+
+.Body main > div:first-of-type h3 {
+  margin: 0;
+  color: #182132;
+  font-family: Georgia, serif;
+  font-size: 29px;
+  font-weight: 700;
+  line-height: 0.95;
+}
+
+.Body main > div:first-of-type > div:nth-child(2) h3 {
+  color: #b57925;
+}
+
+.Body main > div:first-of-type > div:nth-child(3) h3 {
+  color: #278a5d;
+}
+
+.Body main > div:first-of-type small {
+  display: block;
+  margin-top: 5px;
+  color: #7f8b9c;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Request cards */
+.Body main > div:nth-of-type(2) {
+  display: grid;
+  gap: 13px;
+}
+
+.Body main > div:nth-of-type(2) > div {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 15px;
+  min-height: 92px;
+  padding: 15px 22px;
+  overflow: hidden;
+  border: 1px solid #dfe3e7;
+  border-radius: 17px;
+  background: #ffffff;
+  box-shadow: 0 1px 1px rgb(19 32 52 / 2%);
+}
+
+.Body main > div:nth-of-type(2) img {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  background: #eaf0fb;
+  color: transparent;
+  font-size: 0;
+  object-fit: cover;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(1) img {
+  background: #fff2c9;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(2) img {
+  background: #dceafd;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(3) img {
+  background: #daf8e7;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(4) img {
+  background: #fde1e1;
+}
+
+.Body main > div:nth-of-type(2) > div > div {
+  min-width: 0;
+}
+
+.Body main > div:nth-of-type(2) p {
+  margin: 0;
+}
+
+.Body main > div:nth-of-type(2) > div > div p {
+  overflow: hidden;
+  color: #192234;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.Body main > div:nth-of-type(2) > div > div small {
+  display: block;
+  margin-top: 4px;
+  color: #91a0b2;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.Body main > div:nth-of-type(2) > div > p {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: #fff1c5;
+  color: #92551b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(2) > p {
+  background: #dceafd;
+  color: #2b5bc5;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(3) > p {
+  background: #d9f7e5;
+  color: #217047;
+}
+
+.Body main > div:nth-of-type(2) > div:nth-child(4) > p {
+  background: #f9dede;
+  color: #9b2d2d;
+}
+
+@media (max-width: 560px) {
+  .Body {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .header {
+    margin-right: -18px;
+    margin-left: -18px;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .Body main > div:first-of-type {
+    gap: 8px;
+  }
+
+  .Body main > div:first-of-type > div {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .Body main > div:nth-of-type(2) > div {
+    grid-template-columns: 45px minmax(0, 1fr);
+    gap: 12px;
+    padding: 13px 15px;
+  }
+
+  .Body main > div:nth-of-type(2) img {
+    width: 45px;
+    height: 45px;
+  }
+
+  .Body main > div:nth-of-type(2) > div > p {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

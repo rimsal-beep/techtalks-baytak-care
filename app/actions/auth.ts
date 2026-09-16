@@ -1,0 +1,99 @@
+"use server";
+
+import { prisma } from "../../lib/prisma";
+import { hashPassword } from "../../lib/auth";
+
+type SignupInput = {
+  name: string;
+  email: string;
+  password: string;
+  role: "OWNER" | "CARETAKER";
+};
+
+type SignupResult =
+  | {
+      success: true;
+      data: {
+        id: string;
+        name: string;
+        email: string;
+        role: "OWNER" | "CARETAKER";
+      };
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function signup(input: SignupInput): Promise<SignupResult> {
+  if (!input.name?.trim()) {
+    return {
+      success: false,
+      error: "Name is required.",
+    };
+  }
+
+  if (!input.email?.trim()) {
+    return {
+      success: false,
+      error: "Email is required.",
+    };
+  }
+
+  if (!input.password || input.password.length < 6) {
+    return {
+      success: false,
+      error: "Password must be at least 6 characters.",
+    };
+  }
+
+  if (input.role !== "OWNER" && input.role !== "CARETAKER") {
+    return {
+      success: false,
+      error: "Please choose a role.",
+    };
+  }
+
+  const email = input.email.trim().toLowerCase();
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingUser) {
+    return {
+      success: false,
+      error: "An account with this email already exists.",
+    };
+  }
+
+  try {
+    const passwordHash = await hashPassword(input.password);
+
+    const user = await prisma.user.create({
+      data: {
+        name: input.name.trim(),
+        email,
+        passwordHash,
+        role: input.role,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to create user:", error);
+
+    return {
+      success: false,
+      error: "Failed to create account.",
+    };
+  }
+}

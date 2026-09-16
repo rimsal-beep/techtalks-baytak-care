@@ -7,25 +7,107 @@ datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  role         UserRole
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownedProperties      Property[]           @relation("PropertyOwner")
+  caretakingProperties Property[]           @relation("PropertyCaretaker")
+  reportedRequests     MaintenanceRequest[] @relation("ReportedBy")
+  approvedRequests     MaintenanceRequest[] @relation("ApprovedBy")
+  activityLogs         ActivityLog[]
+  sentInvitations      Invitation[]
+
+  @@index([role])
+}
+
+enum UserRole {
+  OWNER
+  CARETAKER
+}
+
 model Property {
-  id                  String               @id @default(uuid())
-  address             String
-  ownerName           String
-  caretakerName       String
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id        String   @id @default(uuid())
+  address   String
+  city      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("PropertyOwner", fields: [ownerId], references: [id])
+
+  caretakerId String?
+  caretaker   User?   @relation("PropertyCaretaker", fields: [caretakerId], references: [id])
 
   maintenanceRequests MaintenanceRequest[]
+  invitations         Invitation[]
+
+  @@index([ownerId])
+  @@index([caretakerId])
+}
+
+model Invitation {
+  id        String           @id @default(uuid())
+  email     String
+  token     String           @unique
+  status    InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+
+  invitedById String
+  invitedBy   User   @relation(fields: [invitedById], references: [id])
+
+  @@index([propertyId])
+  @@index([status])
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 model MaintenanceRequest {
-  id            String   @id @default(uuid())
-  title         String
-  description   String?
-  requestType   String
-  photoUrl      String?
-  estimatedCost Decimal?
-  status        MaintenanceRequestStatus @default(PENDING)
+  id          String                   @id @default(uuid())
+  title       String
+  description String?
+  requestType MaintenanceType
+  priority    RequestPriority          @default(MEDIUM)
+  status      MaintenanceRequestStatus @default(REPORTED)
+
+  issuePhotoUrls String[]
+  reportedById   String
+  reportedBy     User     @relation("ReportedBy", fields: [reportedById], references: [id])
+
+  estimatedCost Decimal? @db.Decimal(10, 2)
+  currency      Currency @default(USD)
+  estimateNote  String?
+
+  approvedById    String?
+  approvedBy      User?     @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  contractorName    String?
+  contractorContact String?
+
+  actualCost      Decimal?  @db.Decimal(10, 2)
+  beforePhotoUrls String[]
+  afterPhotoUrls  String[]
+  receiptUrl      String?
+  completedAt     DateTime?
 
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
@@ -34,24 +116,55 @@ model MaintenanceRequest {
   updatedAt DateTime @updatedAt
 
   activityLogs ActivityLog[]
+
+  @@index([propertyId])
+  @@index([status])
 }
 
-model ActivityLog {
-  id             String   @id @default(uuid())
-  action         String
-  previousStatus MaintenanceRequestStatus?
-  newStatus      MaintenanceRequestStatus?
-  performedBy    String
-  createdAt      DateTime @default(now())
+enum MaintenanceType {
+  PLUMBING
+  ELECTRICAL
+  HVAC
+  STRUCTURAL
+  APPLIANCE
+  PAINTING
+  CLEANING
+  OTHER
+}
 
-  maintenanceRequestId String
-  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
+enum RequestPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Currency {
+  USD
+  LBP
 }
 
 enum MaintenanceRequestStatus {
-  PENDING
+  REPORTED
+  PENDING_APPROVAL
   APPROVED
+  REJECTED
   IN_PROGRESS
   COMPLETED
-  REJECTED
+}
+
+model ActivityLog {
+  id             String                    @id @default(uuid())
+  action         String
+  previousStatus MaintenanceRequestStatus?
+  newStatus      MaintenanceRequestStatus?
+  createdAt      DateTime                  @default(now())
+
+  performedById String
+  performedBy   User   @relation(fields: [performedById], references: [id])
+
+  maintenanceRequestId String
+  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
+
+  @@index([maintenanceRequestId])
 }

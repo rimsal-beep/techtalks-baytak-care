@@ -2,6 +2,7 @@
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
+import { getCurrentUser } from "../../lib/session";
 
 type SignupInput = {
   name: string;
@@ -94,6 +95,74 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return {
       success: false,
       error: "Failed to create account.",
+    };
+  }
+}
+
+type UpdateProfileResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function updateProfile(
+  name: string,
+  phone: string
+): Promise<UpdateProfileResult> {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "You must be logged in.",
+    };
+  }
+
+  if (user.role !== "OWNER") {
+    return {
+      success: false,
+      error: "Only owners can complete their profile.",
+    };
+  }
+
+  const trimmedName = name.trim();
+  const trimmedPhone = phone.trim();
+
+  if (!trimmedName) {
+    return {
+      success: false,
+      error: "Name is required.",
+    };
+  }
+
+  if (!trimmedPhone) {
+    return {
+      success: false,
+      error: "Phone number is required.",
+    };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: trimmedName,
+        phone: trimmedPhone,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to update profile:", error);
+
+    return {
+      success: false,
+      error: "Failed to update profile.",
     };
   }
 }

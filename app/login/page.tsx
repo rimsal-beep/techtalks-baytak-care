@@ -6,13 +6,16 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setLoading(true);
 
     const formData = new FormData(event.currentTarget);
+
     const response = await login({
       email: formData.get("email") as string,
       password: formData.get("password") as string,
@@ -22,59 +25,105 @@ export default function LoginPage() {
       router.push("/");
     } else {
       setError(response.error ?? "Login failed.");
+      setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="h-10 w-10 rounded-lg bg-blue-700" />
-          <span className="text-xl font-bold text-slate-900">Baytak Care</span>
+    <main className="auth-wrap">
+      <div className="auth-box fade-in">
+        <div className="brand-mark">
+          <div className="logo">B</div>
+          <span>Baytak</span>
         </div>
 
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">Log in</h1>
+        <div style={{ marginBottom: "24px" }}>
+          <h1
+            style={{
+              fontSize: "30px",
+              lineHeight: "1.2",
+              margin: "0 0 8px",
+            }}
+          >
+            Welcome back
+          </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-semibold text-slate-800 mb-2">
-              Email
-            </label>
+          <p
+            className="muted"
+            style={{
+              fontSize: "14px",
+              lineHeight: "1.5",
+              margin: 0,
+            }}
+          >
+            Log in to manage your property with confidence.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+
             <input
               id="email"
               name="email"
               type="email"
+              placeholder="Enter your email"
               required
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-semibold text-slate-800 mb-2">
-              Password
-            </label>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+
             <input
               id="password"
               name="password"
               type="password"
+              placeholder="Enter your password"
               required
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div
+              style={{
+                background: "var(--danger-tint)",
+                color: "var(--danger)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px 12px",
+                fontSize: "12.5px",
+                marginBottom: "14px",
+              }}
+            >
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-blue-700 px-4 py-3 font-semibold text-white hover:bg-blue-800"
+            className="primary"
+            disabled={loading}
+            style={{
+              width: "100%",
+              opacity: loading ? 0.6 : 1,
+            }}
           >
-            Log in
+            {loading ? "Logging in..." : "Log in"}
           </button>
         </form>
+
+        <p
+          className="small muted"
+          style={{
+            textAlign: "center",
+            marginTop: "18px",
+          }}
+        >
+          Do not have an account?{" "}
+          <a href="/signup">Create an account</a>
+        </p>
       </div>
     </main>
   );

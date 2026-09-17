@@ -2,6 +2,8 @@
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
+import { getCurrentUser } from "../../lib/session";
+import { cookies } from "next/headers";
 
 type SignupInput = {
   name: string;
@@ -25,11 +27,22 @@ type SignupResult =
       error: string;
     };
 
+const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+
 export async function signup(input: SignupInput): Promise<SignupResult> {
-  if (!input.name?.trim()) {
+  const trimmedName = input.name?.trim();
+
+  if (!trimmedName) {
     return {
       success: false,
       error: "Name is required.",
+    };
+  }
+
+  if (!nameRegex.test(trimmedName)) {
+    return {
+      success: false,
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
@@ -72,11 +85,20 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
 
     const user = await prisma.user.create({
       data: {
-        name: input.name.trim(),
+        name: trimmedName,
         email,
         passwordHash,
         role: input.role,
       },
+    });
+
+    const cookieStore = await cookies();
+
+    cookieStore.set("userId", user.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     return {
@@ -94,6 +116,81 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return {
       success: false,
       error: "Failed to create account.",
+    };
+  }
+}
+
+type UpdateProfileResult =
+  | {
+      success: true;
+    }
+  | {
+      success: false;
+      error: string;
+    };
+
+export async function updateProfile(
+  name: string,
+  phone: string
+): Promise<UpdateProfileResult> {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "You must be logged in.",
+    };
+  }
+
+  if (user.role !== "OWNER") {
+    return {
+      success: false,
+      error: "Only owners can complete their profile.",
+    };
+  }
+
+  const trimmedName = name.trim();
+  const trimmedPhone = phone.trim();
+
+  if (!trimmedName) {
+    return {
+      success: false,
+      error: "Name is required.",
+    };
+  }
+
+  if (!nameRegex.test(trimmedName)) {
+    return {
+      success: false,
+      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
+    };
+  }
+
+  if (!trimmedPhone) {
+    return {
+      success: false,
+      error: "Phone number is required.",
+    };
+  }
+
+  try {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: trimmedName,
+        phone: trimmedPhone,
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Failed to update profile:", error);
+
+    return {
+      success: false,
+      error: "Failed to update profile.",
     };
   }
 }

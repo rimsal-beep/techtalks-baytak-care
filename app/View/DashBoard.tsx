@@ -1,53 +1,63 @@
-"use client";
+import Link from "next/link";
+import DashboardLayout from "../Components/DashBoardCom/DashBoardLayout";
+import style from "../Style/DashboardStyle.module.css";
 
-import { useState, useEffect } from "react";
-import DashboardLayout from '../Components/DashBoardCom/DashBoardLayout'
-import { DisplayItemData } from '../Components/DashBoardCom/RequestsItem';
-import { SummeryCard } from '../Components/DashBoardCom/SummeryCard';
-import { Status } from '../Types/DashboardTypes';
-import { MaintenanceRequest } from '../Types/DashboardTypes';
+type Property = {
+  id: string;
+  address: string;
+  city: string | null;
+  caretaker: {
+    name: string;
+  } | null;
+};
 
-function Dashboard({ propertyId }: { propertyId: string }) {
-  const [items, setItems] = useState<MaintenanceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchRequests() {
-      if (!propertyId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/properties/${propertyId}/requests`);
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setItems(json.data);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRequests();
-  }, [propertyId]);
-
-  if (loading) return <p>Loading...</p>;
-
+function Dashboard({ properties }: { properties: Property[] }) {
   return (
     <DashboardLayout>
-      <>
-        <div>
-          <SummeryCard status={Status.Total} summerynumber={items.length} />
-          <SummeryCard status={Status.Pending} summerynumber={items.filter((item) => item.status === "PENDING").length} />
-          <SummeryCard status={Status.Completed} summerynumber={items.filter((item) => item.status === "COMPLETED").length} />
-        </div>
+      {properties.length === 0 ? (
+        <div className={style.emptyState}>
+          <h3>No properties yet</h3>
+          <p>Add your first property to get started.</p>
 
-        <div>
-          {items.map((request) => (
-            <DisplayItemData key={request.id} request={request} />
+          <Link href="/properties/new" className={style.addButton}>
+            Add Property
+          </Link>
+        </div>
+      ) : (
+        <div className={style.propertyList}>
+          {properties.map((property) => (
+            <Link
+              key={property.id}
+              href={`/properties/${property.id}`}
+              className={style.propertyCard}
+            >
+              <h3>{property.address}</h3>
+
+              {property.city && (
+                <small className={style.propertyCity}>
+                  {property.city}
+                </small>
+              )}
+
+              <div className={style.caretaker}>
+                <small className={style.caretakerLabel}>
+                  Caretaker
+                </small>
+
+                <p
+                  className={
+                    property.caretaker
+                      ? style.caretakerName
+                      : `${style.caretakerName} ${style.noCaretaker}`
+                  }
+                >
+                  {property.caretaker?.name || "No caretaker yet"}
+                </p>
+              </div>
+            </Link>
           ))}
         </div>
-      </>
+      )}
     </DashboardLayout>
   );
 }

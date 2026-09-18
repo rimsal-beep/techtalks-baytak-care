@@ -1,63 +1,57 @@
-import Link from "next/link";
 import DashboardLayout from "../Components/DashBoardCom/DashBoardLayout";
 import style from "../Style/DashboardStyle.module.css";
 
-type Property = {
-  id: string;
-  address: string;
-  city: string | null;
-  caretaker: {
-    name: string;
-  } | null;
+type DashboardProps = {
+  totalProperties: number;
+  needAttention: number;
+  pendingApprovals: number;
+  activeMaintenance: number;
 };
 
-function Dashboard({ properties }: { properties: Property[] }) {
+function Dashboard({
+  totalProperties,
+  needAttention,
+  pendingApprovals,
+  activeMaintenance,
+}: DashboardProps) {
   return (
     <DashboardLayout>
-      {properties.length === 0 ? (
-        <div className={style.emptyState}>
-          <h3>No properties yet</h3>
-          <p>Add your first property to get started.</p>
+      <div className={style.dashboardIntro}>
+        <h2>Good to see you</h2>
+        <p>Here's what's happening across your properties.</p>
+      </div>
 
-          <Link href="/properties/new" className={style.addButton}>
-            Add Property
-          </Link>
+      <div className={style.summaryGrid}>
+        <div className={style.summaryCard}>
+          <strong>{totalProperties}</strong>
+          <span>Total properties</span>
         </div>
-      ) : (
-        <div className={style.propertyList}>
-          {properties.map((property) => (
-            <Link
-              key={property.id}
-              href={`/properties/${property.id}`}
-              className={style.propertyCard}
-            >
-              <h3>{property.address}</h3>
 
-              {property.city && (
-                <small className={style.propertyCity}>
-                  {property.city}
-                </small>
-              )}
-
-              <div className={style.caretaker}>
-                <small className={style.caretakerLabel}>
-                  Caretaker
-                </small>
-
-                <p
-                  className={
-                    property.caretaker
-                      ? style.caretakerName
-                      : `${style.caretakerName} ${style.noCaretaker}`
-                  }
-                >
-                  {property.caretaker?.name || "No caretaker yet"}
-                </p>
-              </div>
-            </Link>
-          ))}
+        <div className={style.summaryCard}>
+          <strong>{needAttention}</strong>
+          <span>Need attention</span>
         </div>
-      )}
+
+        <div className={style.summaryCard}>
+          <strong>{pendingApprovals}</strong>
+          <span>Pending approvals</span>
+        </div>
+
+        <div className={style.summaryCard}>
+          <strong>{activeMaintenance}</strong>
+          <span>Active maintenance</span>
+        </div>
+      </div>
+
+      <section className={style.dashboardSection}>
+        <h3>Needs your attention</h3>
+        <p>No requests currently need your attention.</p>
+      </section>
+
+      <section className={style.dashboardSection}>
+        <h3>Upcoming monthly checks</h3>
+        <p>No upcoming checks to display.</p>
+      </section>
     </DashboardLayout>
   );
 }

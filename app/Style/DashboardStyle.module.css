@@ -9,9 +9,7 @@
 }
 
 .Body {
-  width: min(100%, 1100px);
   min-height: 100vh;
-  margin: 0 auto;
   background: #f8f8f6;
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
 }
@@ -41,7 +39,7 @@
   font-weight: 700;
 }
 
-/* Dashboard layout */
+/* Main dashboard structure */
 
 .dashboardShell {
   display: flex;
@@ -82,32 +80,104 @@
   color: #2458c8;
 }
 
-/* Main content */
+/* Page content */
 
 .mainContent {
   flex: 1;
   min-width: 0;
-  padding: 32px 30px 40px;
+  padding: 40px;
+}
+
+.mainContent h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -1px;
 }
 
 .mainContent > small {
   display: block;
+  margin-bottom: 7px;
   color: #2b5bc5;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+/* Dashboard overview */
+
+.dashboardIntro {
+  margin-bottom: 28px;
+}
+
+.dashboardIntro h2 {
+  margin-bottom: 7px;
+}
+
+.dashboardIntro p {
+  margin: 0;
+  color: #7f8b9c;
+  font-size: 15px;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.summaryCard {
+  padding: 22px;
+  border: 1px solid #dfe3e7;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.summaryCard strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #192234;
+  font-size: 28px;
+  font-weight: 750;
+}
+
+.summaryCard span {
+  color: #7f8b9c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dashboardSection {
+  margin-bottom: 20px;
+  padding: 22px;
+  border: 1px solid #dfe3e7;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.dashboardSection h3 {
+  margin: 0 0 7px;
+  color: #192234;
+  font-size: 17px;
+}
+
+.dashboardSection p {
+  margin: 0;
+  color: #8995a5;
   font-size: 14px;
-  font-weight: 750;
-  letter-spacing: 0.15px;
 }
 
-.mainContent > h2 {
-  margin: 6px 0 24px;
-  color: #172033;
-  font-size: 30px;
-  font-weight: 750;
-  letter-spacing: -1.1px;
-  line-height: 1.08;
-}
+/* Properties */
 
-/* Property list */
+.propertiesHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 25px;
+}
 
 .propertyList {
   display: grid;
@@ -147,7 +217,6 @@
   margin-top: 5px;
   color: #8995a5;
   font-size: 14px;
-  font-weight: 500;
 }
 
 .caretaker {
@@ -176,6 +245,23 @@
   color: #9a6a2a;
 }
 
+/* Buttons */
+
+.addButton {
+  display: inline-block;
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: #2458c8;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.addButton:hover {
+  background: #1d4cab;
+}
+
 /* Empty state */
 
 .emptyState {
@@ -198,24 +284,15 @@
   font-size: 14px;
 }
 
-.addButton {
-  display: inline-block;
-  padding: 11px 18px;
-  border-radius: 10px;
-  background: #2458c8;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.addButton:hover {
-  background: #1d4cab;
-}
-
 /* Responsive */
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
   .dashboardShell {
     flex-direction: column;
   }
@@ -232,11 +309,13 @@
   .mainContent {
     padding: 28px 18px 35px;
   }
-}
 
-@media (max-width: 700px) {
   .propertyList {
     grid-template-columns: 1fr;
+  }
+
+  .propertiesHeader {
+    align-items: flex-start;
   }
 }
 
@@ -245,7 +324,11 @@
     padding: 0 18px;
   }
 
-  .mainContent > h2 {
-    font-size: 27px;
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .propertiesHeader {
+    flex-direction: column;
   }
 }

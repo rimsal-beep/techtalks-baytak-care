@@ -25,7 +25,10 @@ export default function DashboardLayout({ children }: Props) {
             Dashboard
           </Link>
 
-          <span className={style.navItem}>Properties</span>
+          <Link href="/properties" className={style.navItem}>
+            Properties
+          </Link>
+
           <span className={style.navItem}>Requests</span>
           <span className={style.navItem}>Activity</span>
           <span className={style.navItem}>Notifications</span>
@@ -33,9 +36,6 @@ export default function DashboardLayout({ children }: Props) {
         </aside>
 
         <main className={style.mainContent}>
-          <small>OWNER DASHBOARD</small>
-          <h2>My Properties</h2>
-
           {children}
         </main>
       </div>

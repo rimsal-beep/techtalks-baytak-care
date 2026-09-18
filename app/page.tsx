@@ -18,17 +18,38 @@ export default async function Home() {
     where: {
       ownerId: user.id,
     },
-    include: {
-      caretaker: {
-        select: {
-          name: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
+    select: {
+      id: true,
     },
   });
 
-  return <Dashboard properties={properties} />;
+  const propertyIds = properties.map((property) => property.id);
+
+  const requests = await prisma.maintenanceRequest.findMany({
+    where: {
+      propertyId: {
+        in: propertyIds,
+      },
+    },
+    select: {
+      status: true,
+    },
+  });
+
+  const pendingApprovals = requests.filter(
+    (request) => request.status === "PENDING"
+  ).length;
+
+  const activeMaintenance = requests.filter(
+    (request) => request.status === "IN_PROGRESS"
+  ).length;
+
+  return (
+    <Dashboard
+      totalProperties={properties.length}
+      needAttention={pendingApprovals}
+      pendingApprovals={pendingApprovals}
+      activeMaintenance={activeMaintenance}
+    />
+  );
 }

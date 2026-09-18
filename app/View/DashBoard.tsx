@@ -1,71 +1,59 @@
-"use client";
+import DashboardLayout from "../Components/DashBoardCom/DashBoardLayout";
+import style from "../Style/DashboardStyle.module.css";
 
-import { useState, useEffect } from "react";
-import DashboardLayout from '../Components/DashBoardCom/DashBoardLayout'
-import { DisplayItemData } from '../Components/DashBoardCom/RequestsItem';
-import { SummeryCard } from '../Components/DashBoardCom/SummeryCard';
-import { Status } from '../Types/DashboardTypes';
-import { MaintenanceRequest } from '../Types/DashboardTypes';
-// import { cookies } from "next/headers";
-function Dashboard(){
-  // const propertyId = getpropertyId();
- const propertyId ="";
-  const [items, setItems] = useState<MaintenanceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+type DashboardProps = {
+  totalProperties: number;
+  needAttention: number;
+  pendingApprovals: number;
+  activeMaintenance: number;
+};
 
-  useEffect(() => {
-    async function fetchRequests() {
-      if (!propertyId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(`/api/properties/${propertyId}/requests`);
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setItems(json.data);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchRequests();
-  }, [propertyId]);
-
-  if (loading) return <p>Loading...</p>;
-
+export function Dashboard({
+  totalProperties,
+  needAttention,
+  pendingApprovals,
+  activeMaintenance,
+}: DashboardProps) {
   return (
     <DashboardLayout>
-      <>
-        <div>
-          <SummeryCard status={Status.Total} summerynumber={items.length} />
-          <SummeryCard status={Status.Pending} summerynumber={items.filter((item) => item.status === "PENDING").length} />
-          <SummeryCard status={Status.Completed} summerynumber={items.filter((item) => item.status === "COMPLETED").length} />
+      <div className={style.dashboardIntro}>
+        <h2>Good to see you</h2>
+        <p>Here&apos;s what&apos;s happening across your properties.</p>
+      </div>
+
+      <div className={style.summaryGrid}>
+        <div className={style.summaryCard}>
+          <strong>{totalProperties}</strong>
+          <span>Total properties</span>
         </div>
 
-        <div>
-          {items.map((request) => (
-            <DisplayItemData key={request.id} request={request} />
-          ))}
+        <div className={style.summaryCard}>
+          <strong>{needAttention}</strong>
+          <span>Need attention</span>
         </div>
-      </>
+
+        <div className={style.summaryCard}>
+          <strong>{pendingApprovals}</strong>
+          <span>Pending approvals</span>
+        </div>
+
+        <div className={style.summaryCard}>
+          <strong>{activeMaintenance}</strong>
+          <span>Active maintenance</span>
+        </div>
+      </div>
+
+      <section className={style.dashboardSection}>
+        <h3>Needs your attention</h3>
+        <p>No requests currently need your attention.</p>
+      </section>
+
+      <section className={style.dashboardSection}>
+        <h3>Upcoming monthly checks</h3>
+        <p>No upcoming checks to display.</p>
+      </section>
     </DashboardLayout>
-    );
-
-
-
+  );
 }
 
-// async function getpropertyId(){
-
-//   const cookieStore = cookies();
-//   const propertyId = (await cookieStore).get("propertyId")?.value;
-//   return propertyId;
-// }
-
-
-
-
-
-export {Dashboard}
+export default Dashboard;

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import DashboardLayout from'../Components/DashBoardCom/DashBoardLayout'
+import DashboardLayout from '../Components/DashBoardCom/DashBoardLayout'
 import { DisplayItemData } from '../Components/DashBoardCom/RequestsItem';
 import { SummeryCard } from '../Components/DashBoardCom/SummeryCard';
 import { Status } from '../Types/DashboardTypes';
-import { MaintenanceRequest,Cookie } from '../Types/DashboardTypes';
-
-function Dashboard(Props:Cookie){
-  const propertyId = Props.propertyId;
+import { MaintenanceRequest } from '../Types/DashboardTypes';
+// import { cookies } from "next/headers";
+function Dashboard(){
+  // const propertyId = getpropertyId();
+ const propertyId ="";
   const [items, setItems] = useState<MaintenanceRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,29 +35,35 @@ function Dashboard(Props:Cookie){
 
   if (loading) return <p>Loading...</p>;
 
-
-   return(<>
-    
-    <DashboardLayout><>
+  return (
+    <DashboardLayout>
+      <>
         <div>
-        <SummeryCard status={Status.Total} summerynumber={items.length}/>
-        <SummeryCard status={Status.Pending} summerynumber={items.filter((item) => item.status === "PENDING").length}/>
-        <SummeryCard status={Status.Completed} summerynumber={items.filter((item) => item.status === "COMPLETED").length}/>
+          <SummeryCard status={Status.Total} summerynumber={items.length} />
+          <SummeryCard status={Status.Pending} summerynumber={items.filter((item) => item.status === "PENDING").length} />
+          <SummeryCard status={Status.Completed} summerynumber={items.filter((item) => item.status === "COMPLETED").length} />
         </div>
-       
-       <div>
-        {items.map((request) => (
-            <DisplayItemData key={request.id} request={request}/>
-        ))}
-       </div>
-        
-        </>
+
+        <div>
+          {items.map((request) => (
+            <DisplayItemData key={request.id} request={request} />
+          ))}
+        </div>
+      </>
     </DashboardLayout>
-    </>);
+    );
 
 
 
 }
+
+// async function getpropertyId(){
+
+//   const cookieStore = cookies();
+//   const propertyId = (await cookieStore).get("propertyId")?.value;
+//   return propertyId;
+// }
+
 
 
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "../../lib/prisma";
+import { getCurrentUser } from "../../lib/session";
 
 type CreateMaintenanceRequestInput = {
   title: string;
@@ -33,12 +34,56 @@ export async function createMaintenanceRequest(
     };
   }
 
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not logged in.",
+    };
+  }
+
+  const property = await prisma.property.findUnique({
+    where: { id: input.propertyId },
+    select: {
+      ownerId: true,
+      caretakerId: true,
+    },
+  });
+
+  if (!property) {
+    return {
+      success: false,
+      error: "Property not found.",
+    };
+  }
+
+  const isAuthorized =
+    property.ownerId === user.id || property.caretakerId === user.id;
+
+  if (!isAuthorized) {
+    return {
+      success: false,
+      error: "Not authorized for this property.",
+    };
+  }
+
   try {
     const maintenanceRequest = await prisma.maintenanceRequest.create({
       data: {
         title: input.title.trim(),
-        requestType: input.requestType.trim(),
+        requestType: input.requestType.trim() as
+          | "PLUMBING"
+          | "ELECTRICAL"
+          | "HVAC"
+          | "STRUCTURAL"
+          | "APPLIANCE"
+          | "PAINTING"
+          | "CLEANING"
+          | "OTHER",
         description: input.description?.trim() || null,
+        issuePhotoUrls: [],
+        reportedById: user.id,
         propertyId: input.propertyId,
       },
     });

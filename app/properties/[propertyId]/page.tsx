@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 export default async function PropertyDetailsPage({
@@ -71,7 +72,11 @@ export default async function PropertyDetailsPage({
 
       <h2>Caretaker</h2>
 
-      <p>{property.caretaker?.name || "No caretaker yet"}</p>
+      <p>
+        <Link href={`/properties/${property.id}/caretaker`}>
+          {property.caretaker?.name || "No caretaker yet"}
+        </Link>
+      </p>
 
       <div
         style={{

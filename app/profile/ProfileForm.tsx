@@ -376,7 +376,7 @@ export default function ProfileForm({
     setSuccess("Profile saved successfully!");
 
     setTimeout(() => {
-      router.push("/");
+    router.push("/properties/new");
     }, 1000);
   }
 

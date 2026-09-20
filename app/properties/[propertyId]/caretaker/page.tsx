@@ -24,12 +24,22 @@ export default async function PropertyCaretakerPage({
       id: propertyId,
       ownerId: user.id,
     },
-    select: { id: true },
+    select: {
+      id: true,
+      address: true,
+      city: true,
+      caretaker: { select: { name: true } },
+    },
   });
 
   if (!property) {
     notFound();
   }
+
+  const requests = await prisma.maintenanceRequest.findMany({
+    where: { propertyId: property.id },
+    orderBy: { createdAt: "desc" },
+  });
 
   return (
     <main
@@ -40,6 +50,28 @@ export default async function PropertyCaretakerPage({
         fontFamily: "Arial, sans-serif",
       }}
     >
+      <h1>{property.address}</h1>
+      {property.city && <p>{property.city}</p>}
+      <p>Caretaker: {property.caretaker?.name || "No caretaker yet"}</p>
+
+      <hr style={{ margin: "24px 0" }} />
+
+      <h2>Maintenance requests</h2>
+      {requests.length === 0 ? (
+        <p>No requests yet for this property.</p>
+      ) : (
+        requests.map((request) => (
+          <div key={request.id} style={{ padding: "12px 0", borderBottom: "1px solid #eee" }}>
+            <strong>{request.title}</strong>
+            <div style={{ fontSize: "13px", color: "#666" }}>
+              {request.status} · {new Date(request.createdAt).toLocaleDateString()}
+            </div>
+          </div>
+        ))
+      )}
+
+      <hr style={{ margin: "24px 0" }} />
+
       <PropertyCaretakerInvite propertyId={property.id} />
     </main>
   );

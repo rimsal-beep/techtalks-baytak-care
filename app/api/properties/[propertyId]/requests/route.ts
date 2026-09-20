@@ -46,5 +46,8 @@ export async function GET(
     orderBy: { createdAt: "desc" },
   });
 
-  return Response.json({ success: true, data: requests });
+  return Response.json({
+    success: true,
+    data: requests,
+  });
 }

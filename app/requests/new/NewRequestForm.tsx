@@ -115,44 +115,28 @@ export default function NewRequestForm({
               />
             </div>
 
-            {/* Request Type */}
-            <div>
-              <label className="mb-2 block text-base font-semibold text-slate-800">
-                Request Type
-              </label>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setRequestType("Inspection")}
-                  className={`rounded-xl border px-4 py-4 text-base font-semibold transition ${
-                    requestType === "Inspection"
-                      ? "border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600"
-                      : "border-slate-300 bg-white text-slate-500 hover:border-slate-400"
-                  }`}
-                >
-                  Inspection
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRequestType("Maintenance")}
-                  className={`rounded-xl border px-4 py-4 text-base font-semibold transition ${
-                    requestType === "Maintenance"
-                      ? "border-blue-600 bg-blue-50 text-blue-700 ring-1 ring-blue-600"
-                      : "border-slate-300 bg-white text-slate-500 hover:border-slate-400"
-                  }`}
-                >
-                  Maintenance
-                </button>
-              </div>
-
-              <input
-                type="hidden"
-                name="requestType"
-                value={requestType}
-              />
-            </div>
+           {/* Request Type */}
+<div>
+  <label htmlFor="requestType" className="mb-2 block text-base font-semibold text-slate-800">
+    Issue Type
+  </label>
+  <select
+    id="requestType"
+    name="requestType"
+    required
+    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+  >
+    <option value="">Select an issue type</option>
+    <option value="PLUMBING">Plumbing</option>
+    <option value="ELECTRICAL">Electrical</option>
+    <option value="HVAC">HVAC / Air conditioning</option>
+    <option value="STRUCTURAL">Structural</option>
+    <option value="APPLIANCE">Appliance</option>
+    <option value="PAINTING">Painting</option>
+    <option value="CLEANING">Cleaning</option>
+    <option value="OTHER">Other</option>
+  </select>
+</div>
 
             {/* Description */}
             <div>

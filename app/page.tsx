@@ -1,9 +1,7 @@
 import { getCurrentUser } from "@/lib/session";
-import { getPropertyId } from "./actions/property";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Dashboard } from "./View/DashBoard";
-import PropertyCaretakerInvite from "./View/PropertyCaretakerInvite";
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -15,8 +13,6 @@ export default async function Home() {
   if (user.role === "CARETAKER") {
     redirect("/waiting");
   }
-
-  const propertyId = await getPropertyId();
 
   const properties = await prisma.property.findMany({
     where: {
@@ -52,15 +48,11 @@ export default async function Home() {
   const needAttention = pendingApprovals + activeMaintenance;
 
   return (
-    <>
-      <Dashboard
-        totalProperties={totalProperties}
-        needAttention={needAttention}
-        pendingApprovals={pendingApprovals}
-        activeMaintenance={activeMaintenance}
-      />
-
-     
-    </>
+    <Dashboard
+      totalProperties={totalProperties}
+      needAttention={needAttention}
+      pendingApprovals={pendingApprovals}
+      activeMaintenance={activeMaintenance}
+    />
   );
 }

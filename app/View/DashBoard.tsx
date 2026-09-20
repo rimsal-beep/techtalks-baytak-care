@@ -18,7 +18,11 @@ export function Dashboard({
     <DashboardLayout>
       <div className={style.dashboardIntro}>
         <h2>Good to see you</h2>
-        <p>Here&apos;s what&apos;s happening across your properties.</p>
+        <p>
+          {totalProperties === 0
+            ? "Add your first property to get started."
+            : `Here's what's happening across your ${totalProperties} ${totalProperties === 1 ? "property" : "properties"}.`}
+        </p>
       </div>
 
       <div className={style.summaryGrid}>
@@ -45,7 +49,11 @@ export function Dashboard({
 
       <section className={style.dashboardSection}>
         <h3>Needs your attention</h3>
-        <p>No requests currently need your attention.</p>
+        <p>
+          {pendingApprovals > 0
+            ? `You have ${pendingApprovals} cost estimate${pendingApprovals === 1 ? "" : "s"} waiting for your approval.`
+            : "No requests currently need your attention."}
+        </p>
       </section>
 
       <section className={style.dashboardSection}>

@@ -22,7 +22,11 @@ export default function LoginPage() {
     });
 
     if (response.success) {
-      router.push("/");
+      if (response.data?.role === "CARETAKER" && response.data.propertyId) {
+        router.push("/requests/new");
+      } else {
+        router.push("/");
+      }
     } else {
       setError(response.error ?? "Login failed.");
       setLoading(false);

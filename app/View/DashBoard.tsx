@@ -8,7 +8,7 @@ type DashboardProps = {
   activeMaintenance: number;
 };
 
-function Dashboard({
+export function Dashboard({
   totalProperties,
   needAttention,
   pendingApprovals,
@@ -18,7 +18,7 @@ function Dashboard({
     <DashboardLayout>
       <div className={style.dashboardIntro}>
         <h2>Good to see you</h2>
-        <p>Here's what's happening across your properties.</p>
+        <p>Here&apos;s what&apos;s happening across your properties.</p>
       </div>
 
       <div className={style.summaryGrid}>
@@ -56,4 +56,4 @@ function Dashboard({
   );
 }
 
-export { Dashboard };
+export default Dashboard;

@@ -32,5 +32,8 @@ interface MaintenanceRequest {
   updatedAt: string;
 }
 
+interface Cookie{
+  propertyId:string;
+}
 export { Status };
-export type { SummeryData,ItemData,MaintenanceRequest };
+export type { SummeryData,ItemData,MaintenanceRequest,Cookie };

@@ -36,8 +36,32 @@ export async function login(input: LoginInput) {
     maxAge: 60 * 60 * 24 * 7, // 7 days
   });
 
+  const property = await prisma.property.findFirst({
+    where: user.role === "OWNER"
+      ? { ownerId: user.id }
+      : { caretakerId: user.id },
+    select: { id: true },
+  });
+
+  if (property) {
+    cookieStore.set("propertyId", property.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+    });
+  }
+
   return {
     success: true,
-    data: { id: user.id, email: user.email, role: user.role, propertyId: user.propertyId },
+    data: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      propertyId: property?.id ?? null,
+    },
   };
 }
+
+
+

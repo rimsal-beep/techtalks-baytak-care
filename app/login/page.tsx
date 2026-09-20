@@ -22,8 +22,8 @@ export default function LoginPage() {
     });
 
     if (response.success) {
-      if (response.data?.role === "CARETAKER" && response.data.propertyId) {
-        router.push("/requests/new");
+      if (response.data?.role === "CARETAKER") {
+        router.push(response.data.propertyId ? "/requests/new" : "/waiting");
       } else {
         router.push("/");
       }

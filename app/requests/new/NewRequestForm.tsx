@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { createMaintenanceRequest } from "../../actions/maintenance";
-
+import  {CurrencySelect,EstimateNoteInput,EstimatedCostInput}from"../../Components/CostEstimet/costEstimat";
 type Property = {
   id: string;
   address: string;
@@ -28,6 +28,11 @@ export default function NewRequestForm({
       title: formData.get("title") as string,
       requestType: formData.get("requestType") as string,
       description: formData.get("description") as string,
+      estimatedCost: formData.get("estimatedCost")
+        ? Number(formData.get("estimatedCost"))
+        : undefined,
+      currency: formData.get("currency") as "USD" | "LBP",
+      estimateNote: formData.get("estimateNote") as string,
       propertyId: formData.get("propertyId") as string,
     });
 
@@ -157,31 +162,13 @@ export default function NewRequestForm({
               />
             </div>
 
-            {/* Estimated Cost */}
-            <div>
-              <label
-                htmlFor="estimatedCost"
-                className="mb-2 block text-base font-semibold text-slate-800"
-              >
-                Estimated Cost
-              </label>
-
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-slate-500">
-                  $
-                </span>
-
-                <input
-                  id="estimatedCost"
-                  name="estimatedCost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  className="w-full rounded-xl border border-slate-300 bg-white py-4 pl-10 pr-4 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
+            {/* Estimate */}
+            <div className="grid grid-cols-[1.2fr_0.8fr] gap-2.5">
+              <EstimatedCostInput />
+              <CurrencySelect />
             </div>
+
+            <EstimateNoteInput />
 
             {/* Photo */}
             <div>
@@ -209,6 +196,14 @@ export default function NewRequestForm({
             </div>
 
             {/* Success message */}
+
+
+
+
+
+
+
+
             {submitted && (
               <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
                 Request submitted successfully.

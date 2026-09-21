@@ -7,6 +7,9 @@ type CreateMaintenanceRequestInput = {
   title: string;
   description?: string;
   requestType: string;
+  estimatedCost?: number;
+  currency?: "USD" | "LBP";
+  estimateNote?: string;
   propertyId: string;
 };
 
@@ -69,6 +72,18 @@ export async function createMaintenanceRequest(
   }
 
   try {
+    const estimatedCost = input.estimatedCost ?? null;
+
+    if (
+      estimatedCost !== null &&
+      (!Number.isFinite(estimatedCost) || estimatedCost < 0)
+    ) {
+      return {
+        success: false,
+        error: "Estimated cost must be a valid non-negative number.",
+      };
+    }
+
     const maintenanceRequest = await prisma.maintenanceRequest.create({
       data: {
         title: input.title.trim(),
@@ -82,6 +97,9 @@ export async function createMaintenanceRequest(
           | "CLEANING"
           | "OTHER",
         description: input.description?.trim() || null,
+        estimatedCost,
+        currency: input.currency ?? "USD",
+        estimateNote: input.estimateNote?.trim() || null,
         issuePhotoUrls: [],
         reportedById: user.id,
         propertyId: input.propertyId,
@@ -90,7 +108,6 @@ export async function createMaintenanceRequest(
 
     return {
       success: true,
-      data: maintenanceRequest,
     };
   } catch (error) {
     console.error("Failed to create maintenance request:", error);

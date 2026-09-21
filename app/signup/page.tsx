@@ -63,86 +63,90 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F5F1E8] flex items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#17324D] text-xl font-bold text-white">
-            B
+    <main className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm rounded-2xl bg-white border border-[#E4E1D9] p-8">
+        <div className="mb-7 flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1F4E79] text-white">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5">
+              <path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" />
+            </svg>
           </div>
-          <span className="text-xl font-bold text-[#17324D]">Baytak Care</span>
+          <span className="text-[17px] font-semibold text-[#181A1B]">Baytak Care</span>
         </div>
 
         <div className="mb-6">
-          <h1 className="mb-2 text-3xl font-bold text-[#17324D]">Create your account</h1>
-          <p className="text-sm leading-6 text-slate-500">
+          <h1 className="mb-1.5 text-[26px] leading-tight text-[#181A1B]" style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 500 }}>
+            Create your account
+          </h1>
+          <p className="text-[13.5px] leading-6 text-[#8B8D89]">
             Join Baytak Care and start managing your property with confidence.
           </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-5">
-            <label htmlFor="name" className="mb-2 block text-sm font-semibold text-slate-700">Full name</label>
+          <div className="mb-4">
+            <label htmlFor="name" className="mb-1.5 block text-[12.5px] font-semibold text-[#5B5D5A]">Full name</label>
             <input
               id="name" type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="Enter your full name" required
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-[#17324D] outline-none transition focus:border-[#17324D] focus:ring-2 focus:ring-[#17324D]/20"
+              className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-2.5 text-sm text-[#181A1B] outline-none transition focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
             />
           </div>
 
-          <div className="mb-5">
-            <label htmlFor="email" className="mb-2 block text-sm font-semibold text-slate-700">Email</label>
+          <div className="mb-4">
+            <label htmlFor="email" className="mb-1.5 block text-[12.5px] font-semibold text-[#5B5D5A]">Email</label>
             <input
               id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email" required
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-[#17324D] outline-none transition focus:border-[#17324D] focus:ring-2 focus:ring-[#17324D]/20"
+              className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-2.5 text-sm text-[#181A1B] outline-none transition focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
             />
           </div>
 
-          <div className="mb-5">
-            <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+          <div className="mb-4">
+            <label htmlFor="password" className="mb-1.5 block text-[12.5px] font-semibold text-[#5B5D5A]">Password</label>
             <input
               id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 6 characters" minLength={6} required
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-[#17324D] outline-none transition focus:border-[#17324D] focus:ring-2 focus:ring-[#17324D]/20"
+              className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-2.5 text-sm text-[#181A1B] outline-none transition focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
             />
           </div>
 
-          <div className="mb-5">
-            <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-slate-700">Confirm password</label>
+          <div className="mb-4">
+            <label htmlFor="confirmPassword" className="mb-1.5 block text-[12.5px] font-semibold text-[#5B5D5A]">Confirm password</label>
             <input
               id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password" minLength={6} required
-              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm text-[#17324D] outline-none transition focus:border-[#17324D] focus:ring-2 focus:ring-[#17324D]/20"
+              className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-2.5 text-sm text-[#181A1B] outline-none transition focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
             />
           </div>
 
           <div className="mb-5">
-            <label className="mb-2 block text-sm font-semibold text-slate-700">I am a</label>
-            <div className="grid grid-cols-2 gap-3">
+            <label className="mb-1.5 block text-[12.5px] font-semibold text-[#5B5D5A]">I am a</label>
+            <div className="grid grid-cols-2 gap-2.5">
               <button type="button" onClick={() => setRole("OWNER")}
-                className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${role === "OWNER" ? "border-[#17324D] bg-[#17324D]/10 text-[#17324D]" : "border-slate-300 bg-white text-slate-700 hover:border-[#17324D]"}`}>
+                className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${role === "OWNER" ? "border-[#1F4E79] bg-[#E9F0F6] text-[#1F4E79]" : "border-[#E4E1D9] bg-white text-[#5B5D5A] hover:border-[#1F4E79]"}`}>
                 Owner
               </button>
               <button type="button" onClick={() => setRole("CARETAKER")}
-                className={`rounded-xl border px-4 py-3 text-sm font-semibold transition ${role === "CARETAKER" ? "border-[#17324D] bg-[#17324D]/10 text-[#17324D]" : "border-slate-300 bg-white text-slate-700 hover:border-[#17324D]"}`}>
+                className={`rounded-lg border px-4 py-2.5 text-sm font-semibold transition ${role === "CARETAKER" ? "border-[#1F4E79] bg-[#E9F0F6] text-[#1F4E79]" : "border-[#E4E1D9] bg-white text-[#5B5D5A] hover:border-[#1F4E79]"}`}>
                 Caretaker
               </button>
             </div>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{error}</div>
+            <div className="mb-4 rounded-lg border border-[#F3D4D0] bg-[#FAEAE9] px-3.5 py-2.5 text-[13px] text-[#B42318]">{error}</div>
           )}
 
           <button type="submit" disabled={loading}
-            className="w-full rounded-xl bg-[#17324D] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
+            className="w-full rounded-lg bg-[#1F4E79] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
-        <p className="mt-5 text-center text-sm text-slate-500">
+        <p className="mt-5 text-center text-[13px] text-[#8B8D89]">
           Already have an account?{" "}
-          <a href="/login" className="font-semibold text-[#17324D] hover:underline">Log in</a>
+          <a href="/login" className="font-semibold text-[#1F4E79] hover:underline">Log in</a>
         </p>
       </div>
     </main>

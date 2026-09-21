@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4efe6;
-  --foreground: #14213d;
+  --background: #f7f6f3;
+  --foreground: #181a1b;
 
-  --brand: #14213d;
-  --brand-tint: #e9e1d3;
+  --brand: #1f4e79;
+  --brand-tint: #e9f0f6;
 
-  --surface: #fffdf8;
-  --border: #d8d0c3;
-  --ink: #14213d;
+  --surface: #ffffff;
+  --border: #e4e1d9;
+  --ink: #181a1b;
 
   --danger: #b42318;
-  --danger-tint: #fdf0ee;
+  --danger-tint: #faeae9;
 
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -32,7 +32,7 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
 }
 
 /* =========================
@@ -55,7 +55,12 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 16px 40px rgba(20, 33, 61, 0.1);
+  box-shadow: 0 16px 40px rgba(24, 26, 27, 0.06);
+}
+
+.auth-box h1 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
 }
 
 .fade-in {
@@ -96,7 +101,7 @@ body {
   justify-content: center;
   border-radius: 11px;
   background: var(--brand);
-  color: #f4efe6;
+  color: #ffffff;
   font-size: 19px;
   font-weight: 700;
 }
@@ -165,7 +170,7 @@ body {
   border: none;
   border-radius: var(--radius-sm);
   background: var(--brand);
-  color: #fffdf8;
+  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -173,7 +178,7 @@ body {
 }
 
 .primary:hover:not(:disabled) {
-  background: #0f1a30;
+  background: #163a5c;
 }
 
 .primary:active:not(:disabled) {
@@ -189,7 +194,7 @@ body {
    ========================= */
 
 .muted {
-  color: #716b61;
+  color: #8b8d89;
 }
 
 .small {

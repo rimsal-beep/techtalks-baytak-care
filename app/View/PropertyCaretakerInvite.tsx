@@ -34,7 +34,7 @@ export default function PropertyCaretakerInvite({
 
 	return (
 		<section className={styles.card}>
-			<div className={styles.eyebrow}>Property access</div>
+			<div className={styles.eyebrow}>Caretaker</div>
 			<h2 className={styles.title}>Invite a caretaker</h2>
 			<p className={styles.description}>
 				Existing caretaker accounts are linked immediately. New accounts are linked after signup.

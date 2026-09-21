@@ -102,21 +102,25 @@ export default async function PropertyDetailsPage({
           ) : (
             <div className={detailStyle.requestList}>
               {requests.map((request) => (
-                <div key={request.id} className={detailStyle.requestRow}>
-                  <div>
-                    <p className={detailStyle.requestTitle}>{request.title}</p>
-                    <p className={detailStyle.requestMeta}>
-                      {new Date(request.createdAt).toLocaleDateString("en-US", {
-                        month: "short", day: "numeric", year: "numeric",
-                      })}
-                      {request.estimatedCost ? ` · Est. $${request.estimatedCost}` : ""}
-                    </p>
-                  </div>
-                  <span className={`${detailStyle.pill} ${STATUS_CLASS[request.status] ?? detailStyle.pillNew}`}>
-                    {STATUS_LABEL[request.status] ?? request.status}
-                  </span>
-                </div>
-              ))}
+  <Link
+    key={request.id}
+    href={`/requests/${request.id}`}
+    className={detailStyle.requestRow}
+  >
+    <div>
+      <p className={detailStyle.requestTitle}>{request.title}</p>
+      <p className={detailStyle.requestMeta}>
+        {new Date(request.createdAt).toLocaleDateString("en-US", {
+          month: "short", day: "numeric", year: "numeric",
+        })}
+        {request.estimatedCost ? ` · Est. $${request.estimatedCost}` : ""}
+      </p>
+    </div>
+    <span className={`${detailStyle.pill} ${STATUS_CLASS[request.status] ?? detailStyle.pillNew}`}>
+      {STATUS_LABEL[request.status] ?? request.status}
+    </span>
+  </Link>
+))}
             </div>
           )}
         </section>

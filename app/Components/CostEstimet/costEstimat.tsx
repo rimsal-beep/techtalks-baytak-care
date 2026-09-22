@@ -67,4 +67,32 @@ function EstimateNoteInput() {
   );
 }
 
-export { EstimateNoteInput, CurrencySelect, EstimatedCostInput };
+function PhotoUrl(){
+  return(
+    <div>
+      <label
+        htmlFor="issuePhoto"
+        className="mb-2 block text-base font-semibold text-slate-800"
+      >
+        Photo
+        
+      </label>
+      <input
+        id="issuePhoto"
+        name="issuePhotoUrls"
+        type="file"
+        accept="image/*"
+        multiple
+       
+        className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-blue-700 file:px-4 file:py-2 file:font-semibold file:text-white"
+      />
+    </div>
+  );
+
+}
+
+
+
+
+
+export { EstimateNoteInput, CurrencySelect, EstimatedCostInput ,PhotoUrl};

@@ -2,7 +2,12 @@
 
 import { FormEvent, useState } from "react";
 import { createMaintenanceRequest } from "../../actions/maintenance";
-import  {CurrencySelect,EstimateNoteInput,EstimatedCostInput}from"../../Components/CostEstimet/costEstimat";
+import {
+  CurrencySelect,
+  EstimateNoteInput,
+  EstimatedCostInput,
+  PhotoUrl,
+} from "../../Components/CostEstimet/costEstimat";
 type Property = {
   id: string;
   address: string;
@@ -16,7 +21,6 @@ type NewRequestFormProps = {
 export default function NewRequestForm({
   property,
 }: NewRequestFormProps) {
-  const [requestType, setRequestType] = useState("Inspection");
   const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -33,6 +37,9 @@ export default function NewRequestForm({
         : undefined,
       currency: formData.get("currency") as "USD" | "LBP",
       estimateNote: formData.get("estimateNote") as string,
+      issuePhotos: formData
+        .getAll("issuePhotoUrls")
+        .filter((value): value is File => value instanceof File),
       propertyId: formData.get("propertyId") as string,
     });
 
@@ -167,34 +174,11 @@ export default function NewRequestForm({
               <EstimatedCostInput />
               <CurrencySelect />
             </div>
-
-            <EstimateNoteInput />
+            <EstimateNoteInput/>
 
             {/* Photo */}
-            <div>
-              <label
-                htmlFor="photo"
-                className="mb-2 block text-base font-semibold text-slate-800"
-              >
-                Photo
-              </label>
-
-              <label
-                htmlFor="photo"
-                className="flex min-h-24 cursor-pointer items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center text-base text-slate-400 transition hover:border-blue-500 hover:bg-blue-50"
-              >
-                Tap to add a photo
-              </label>
-
-              <input
-                id="photo"
-                name="photo"
-                type="file"
-                accept="image/*"
-                className="hidden"
-              />
-            </div>
-
+          
+           <PhotoUrl/>
             {/* Success message */}
 
 

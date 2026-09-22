@@ -79,7 +79,7 @@
 form.section .sectionTitle {
   margin: 0;
   color: #172033;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: 'Fraunces', Georgia, serif;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -0.35px;
@@ -118,8 +118,8 @@ form.section .sectionTitle {
 }
 
 .formField input:focus {
-  border-color: #285D87;
-  box-shadow: 0 0 0 3px rgb(40 93 135 / 12%);
+  border-color: #1F4E79;
+  box-shadow: 0 0 0 3px rgb(31 78 121 / 12%);
 }
 
 .formField input::placeholder {

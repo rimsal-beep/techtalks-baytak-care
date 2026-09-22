@@ -1,5 +1,8 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { prisma } from "../../lib/prisma";
 import { getCurrentUser } from "../../lib/session";
 
@@ -7,6 +10,10 @@ type CreateMaintenanceRequestInput = {
   title: string;
   description?: string;
   requestType: string;
+  estimatedCost?: number;
+  currency?: "USD" | "LBP";
+  estimateNote?: string;
+  issuePhotos?: File[];
   propertyId: string;
 };
 
@@ -69,6 +76,63 @@ export async function createMaintenanceRequest(
   }
 
   try {
+    const estimatedCost = input.estimatedCost ?? null;
+    const issuePhotos = (input.issuePhotos ?? []).filter(
+      (photo) => photo.size > 0
+    );
+
+    if (issuePhotos.length > 10) {
+      return {
+        success: false,
+        error: "You can upload up to 10 photos.",
+      };
+    }
+
+    for (const photo of issuePhotos) {
+      if (!photo.type.startsWith("image/")) {
+        return {
+          success: false,
+          error: "The photo must be an image file.",
+        };
+      }
+
+      if (photo.size > 5 * 1024 * 1024) {
+        return {
+          success: false,
+          error: "The photo must be smaller than 5 MB.",
+        };
+      }
+    }
+
+    const issuePhotoUrls: string[] = [];
+    if (issuePhotos.length > 0) {
+      const uploadDirectory = path.join(process.cwd(), "public", "uploads");
+      await mkdir(uploadDirectory, { recursive: true });
+
+      for (const photo of issuePhotos) {
+        const extension = (photo.type.split("/")[1] || "bin").replace(
+          /[^a-z0-9]/gi,
+          ""
+        );
+        const fileName = `${randomUUID()}.${extension}`;
+        await writeFile(
+          path.join(uploadDirectory, fileName),
+          Buffer.from(await photo.arrayBuffer())
+        );
+        issuePhotoUrls.push(`/uploads/${fileName}`);
+      }
+    }
+
+    if (
+      estimatedCost !== null &&
+      (!Number.isFinite(estimatedCost) || estimatedCost < 0)
+    ) {
+      return {
+        success: false,
+        error: "Estimated cost must be a valid non-negative number.",
+      };
+    }
+
     const maintenanceRequest = await prisma.maintenanceRequest.create({
       data: {
         title: input.title.trim(),
@@ -82,7 +146,10 @@ export async function createMaintenanceRequest(
           | "CLEANING"
           | "OTHER",
         description: input.description?.trim() || null,
-        issuePhotoUrls: [],
+        estimatedCost,
+        currency: input.currency ?? "USD",
+        estimateNote: input.estimateNote?.trim() || null,
+        issuePhotoUrls,
         reportedById: user.id,
         propertyId: input.propertyId,
       },
@@ -90,7 +157,6 @@ export async function createMaintenanceRequest(
 
     return {
       success: true,
-      data: maintenanceRequest,
     };
   } catch (error) {
     console.error("Failed to create maintenance request:", error);

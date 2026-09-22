@@ -1,12 +1,4 @@
-:global(*) {
-  box-sizing: border-box;
-}
 
-:global(body) {
-  margin: 0;
-  background: #f4f5f3;
-  color: #172033;
-}
 
 .Body {
   min-height: 100vh;

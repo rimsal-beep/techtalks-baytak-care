@@ -142,6 +142,10 @@ export default async function RequestDetailPage({
                 placeholder="https://example.com/receipt.pdf"
               />
             </div>
+
+            <button type="button" className={detailStyle.submitButton}>
+              Mark as complete
+            </button>
           </form>
         )}
       </main>

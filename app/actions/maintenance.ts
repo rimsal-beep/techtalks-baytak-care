@@ -167,3 +167,114 @@ export async function createMaintenanceRequest(
     };
   }
 }
+
+type CompleteMaintenanceRequestInput = {
+  requestId: string;
+  actualCost: number;
+  beforePhotoUrl?: string;
+  afterPhotoUrl?: string;
+  receiptUrl?: string;
+};
+
+export async function completeMaintenanceRequest(
+  input: CompleteMaintenanceRequestInput
+) {
+  if (!input.requestId?.trim()) {
+    return {
+      success: false,
+      error: "Request ID is required.",
+    };
+  }
+
+  if (!Number.isFinite(input.actualCost) || input.actualCost < 0) {
+    return {
+      success: false,
+      error: "Actual cost must be a valid non-negative number.",
+    };
+  }
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not logged in.",
+    };
+  }
+
+  const request = await prisma.maintenanceRequest.findUnique({
+    where: { id: input.requestId },
+    include: {
+      property: {
+        select: {
+          caretakerId: true,
+        },
+      },
+    },
+  });
+
+  if (!request) {
+    return {
+      success: false,
+      error: "Maintenance request not found.",
+    };
+  }
+
+  if (request.status !== "APPROVED") {
+    return {
+      success: false,
+      error: "Only approved requests can be marked as completed.",
+    };
+  }
+
+  if (request.property.caretakerId !== user.id) {
+    return {
+      success: false,
+      error: "You are not authorized to complete this request.",
+    };
+  }
+
+  const beforePhotoUrl = input.beforePhotoUrl?.trim();
+  const afterPhotoUrl = input.afterPhotoUrl?.trim();
+  const receiptUrl = input.receiptUrl?.trim();
+
+  try {
+    const completedRequest = await prisma.$transaction(async (tx) => {
+      const updatedRequest = await tx.maintenanceRequest.update({
+        where: { id: request.id },
+        data: {
+          status: "COMPLETED",
+          completedAt: new Date(),
+          actualCost: input.actualCost,
+          beforePhotoUrls: beforePhotoUrl ? [beforePhotoUrl] : [],
+          afterPhotoUrls: afterPhotoUrl ? [afterPhotoUrl] : [],
+          receiptUrl: receiptUrl || null,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          action: "Request completed",
+          previousStatus: request.status,
+          newStatus: "COMPLETED",
+          performedById: user.id,
+          maintenanceRequestId: request.id,
+        },
+      });
+
+      return updatedRequest;
+    });
+
+    return {
+      success: true,
+      data: completedRequest,
+    };
+  } catch (error) {
+    console.error("Failed to complete maintenance request:", error);
+
+    return {
+      success: false,
+      error: "Failed to complete maintenance request.",
+    };
+  }
+}

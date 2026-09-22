@@ -141,6 +141,49 @@ export default async function RequestDetailPage({
             </div>
           )}
         </section>
+
+        {request.property.caretakerId === user.id && request.status === "IN_PROGRESS" && (
+          <form className={detailStyle.section}>
+            <h3 className={detailStyle.sectionTitle}>Complete the job</h3>
+            <p className={detailStyle.formDescription}>
+              Add links to the completed work and its receipt.
+            </p>
+
+            <div className={detailStyle.formField}>
+              <label htmlFor="before-photo-link">Before-photo link</label>
+              <input
+                id="before-photo-link"
+                name="beforePhotoUrl"
+                type="text"
+                placeholder="https://example.com/before-photo.jpg"
+              />
+            </div>
+
+            <div className={detailStyle.formField}>
+              <label htmlFor="after-photo-link">After-photo link</label>
+              <input
+                id="after-photo-link"
+                name="afterPhotoUrl"
+                type="text"
+                placeholder="https://example.com/after-photo.jpg"
+              />
+            </div>
+
+            <div className={detailStyle.formField}>
+              <label htmlFor="receipt-link">Receipt link</label>
+              <input
+                id="receipt-link"
+                name="receiptUrl"
+                type="text"
+                placeholder="https://example.com/receipt.pdf"
+              />
+            </div>
+
+            <button type="button" className={detailStyle.submitButton}>
+              Mark as complete
+            </button>
+          </form>
+        )}
       </main>
     </div>
   );

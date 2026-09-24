@@ -5,7 +5,10 @@
   font-size: 13px;
   text-decoration: none;
 }
-.breadcrumb:hover { color: #1F4E79; }
+
+.breadcrumb:hover {
+  color: #1F4E79;
+}
 
 .city {
   margin: 4px 0 0;
@@ -24,6 +27,7 @@
   border-radius: 14px;
   background: #FFFFFF;
 }
+
 .sectionTitle {
   margin: 0 0 14px;
   font-family: 'Fraunces', Georgia, serif;
@@ -36,6 +40,7 @@
   display: flex;
   flex-direction: column;
 }
+
 .requestRow {
   display: flex;
   justify-content: space-between;
@@ -43,13 +48,18 @@
   padding: 13px 0;
   border-bottom: 1px solid #F1EFEA;
 }
-.requestRow:last-child { border-bottom: none; }
+
+.requestRow:last-child {
+  border-bottom: none;
+}
+
 .requestTitle {
   margin: 0;
   font-weight: 600;
   font-size: 14.5px;
   color: #181A1B;
 }
+
 .requestMeta {
   margin: 3px 0 0;
   font-size: 12.5px;
@@ -65,12 +75,116 @@
   border-radius: 99px;
   white-space: nowrap;
 }
-.pillNew { background: #F1EFEA; color: #5B5D5A; }
-.pillWarning { background: #FBF1E1; color: #B7791F; }
-.pillBrand { background: #E9F0F6; color: #1F4E79; }
-.pillSuccess { background: #E7F4EC; color: #1E8E5A; }
-.pillDanger { background: #FAEAE9; color: #B42318; }
+
+.pillNew {
+  background: #F1EFEA;
+  color: #5B5D5A;
+}
+
+.pillWarning {
+  background: #FBF1E1;
+  color: #B7791F;
+}
+
+.pillBrand {
+  background: #E9F0F6;
+  color: #1F4E79;
+}
+
+.pillSuccess {
+  background: #E7F4EC;
+  color: #1E8E5A;
+}
+
+.pillDanger {
+  background: #FAEAE9;
+  color: #B42318;
+}
+
+/* Activity History */
+
+.activityTimeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.activityItem {
+  display: flex;
+  position: relative;
+  min-height: 74px;
+}
+
+.activityMarker {
+  position: relative;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.activityMarker::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 18px;
+  bottom: -1px;
+  width: 1px;
+  background: #E4E1D9;
+}
+
+.activityItem:last-child .activityMarker::after {
+  display: none;
+}
+
+.activityMarker span {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #1F4E79;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+
+.activityContent {
+  padding: 0 0 20px 12px;
+}
+
+.activityAction {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #181A1B;
+}
+
+.activityRequest {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #5B5D5A;
+}
+
+.activityMeta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #8B8D89;
+}
+
+.muted {
+  margin: 0;
+  color: #8B8D89;
+  font-size: 13.5px;
+}
 
 @media (max-width: 700px) {
-  .caretakerBadge { text-align: left; }
+  .caretakerBadge {
+    text-align: left;
+  }
+
+  .requestRow {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .activityContent {
+    padding-left: 10px;
+  }
 }

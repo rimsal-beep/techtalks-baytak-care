@@ -150,3 +150,9 @@ form.section .sectionTitle {
   outline: 3px solid rgb(31 78 121 / 20%);
   outline-offset: 2px;
 }
+.galleryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}

@@ -239,8 +239,8 @@ export async function completeMaintenanceRequest(
   const receiptUrl = input.receiptUrl?.trim();
 
   try {
-    const completedRequest = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.maintenanceRequest.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.maintenanceRequest.update({
         where: { id: request.id },
         data: {
           status: "COMPLETED",
@@ -262,12 +262,10 @@ export async function completeMaintenanceRequest(
         },
       });
 
-      return updatedRequest;
     });
 
     return {
       success: true,
-      data: completedRequest,
     };
   } catch (error) {
     console.error("Failed to complete maintenance request:", error);

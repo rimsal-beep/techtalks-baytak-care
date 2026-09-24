@@ -134,26 +134,27 @@ export async function createMaintenanceRequest(
     }
 
     const maintenanceRequest = await prisma.maintenanceRequest.create({
-      data: {
-        title: input.title.trim(),
-        requestType: input.requestType.trim() as
-          | "PLUMBING"
-          | "ELECTRICAL"
-          | "HVAC"
-          | "STRUCTURAL"
-          | "APPLIANCE"
-          | "PAINTING"
-          | "CLEANING"
-          | "OTHER",
-        description: input.description?.trim() || null,
-        estimatedCost,
-        currency: input.currency ?? "USD",
-        estimateNote: input.estimateNote?.trim() || null,
-        issuePhotoUrls,
-        reportedById: user.id,
-        propertyId: input.propertyId,
-      },
-    });
+   data:{
+    title: input.title.trim(),
+    requestType: input.requestType.trim() as
+      | "PLUMBING"
+      | "ELECTRICAL"
+      | "HVAC"
+      | "STRUCTURAL"
+      | "APPLIANCE"
+      | "PAINTING"
+      | "CLEANING"
+      | "OTHER",
+    description: input.description?.trim() || null,
+    status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
+    estimatedCost,
+    currency: input.currency ?? "USD",
+    estimateNote: input.estimateNote?.trim() || null,
+    issuePhotoUrls,
+    reportedById: user.id,
+    propertyId: input.propertyId,
+  },
+});
 
     return {
       success: true,

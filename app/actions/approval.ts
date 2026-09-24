@@ -61,9 +61,8 @@ export async function approveRequest(requestId: string) {
   });
 
   return {
-    success: true,
-    data: updatedRequest,
-  };
+  success: true,
+};
 
 }
 
@@ -134,7 +133,6 @@ export async function rejectRequest(requestId: string, reason: string) {
   });
 
   return {
-    success: true,
-    data: updatedRequest,
-  };
+  success: true,
+};
 }

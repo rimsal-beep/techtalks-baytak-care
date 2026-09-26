@@ -1,0 +1,155 @@
+.page {
+  min-height: 100vh;
+  background: #F7F6F3;
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E4E1D9;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #181A1B;
+}
+.logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #1F4E79;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.logoutButton {
+  padding: 8px 16px;
+  border: 1px solid #E4E1D9;
+  border-radius: 8px;
+  background: #fff;
+  color: #5B5D5A;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+.title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 24px;
+  margin: 0 0 18px;
+}
+.propertyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+.propertyCard {
+  padding: 18px 20px;
+  border: 1px solid #E4E1D9;
+  border-radius: 14px;
+  background: #FFFFFF;
+}
+.propertyCard h3 {
+  margin: 0;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 17px;
+}
+.city {
+  margin: 4px 0 14px;
+  color: #8B8D89;
+  font-size: 13px;
+}
+.reportButton {
+  display: inline-block;
+  padding: 9px 16px;
+  background: #1F4E79;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.sectionTitle {
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 18px;
+  margin: 0 0 14px;
+}
+.muted {
+  color: #8B8D89;
+  font-size: 14px;
+}
+.requestList {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #E4E1D9;
+  border-radius: 14px;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+.requestRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #F1EFEA;
+  text-decoration: none;
+  color: inherit;
+}
+.requestRow:last-child { border-bottom: none; }
+.requestTitle { margin: 0; font-weight: 600; font-size: 14.5px; color: #181A1B; }
+.requestMeta { margin: 3px 0 0; font-size: 12.5px; color: #8B8D89; }
+.statusPill {
+  background: #F1EFEA;
+  color: #5B5D5A;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 99px;
+}
+
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.statCard {
+  padding: 16px 18px;
+  border: 1px solid #E4E1D9;
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+.statCard strong {
+  display: block;
+  font-family: 'Fraunces', Georgia, serif;
+  font-weight: 500;
+  font-size: 24px;
+  color: #181A1B;
+  margin-bottom: 4px;
+}
+.statCard span {
+  font-size: 12px;
+  color: #8B8D89;
+  font-weight: 500;
+}
+
+.status_REPORTED { background: #F1EFEA; color: #5B5D5A; }
+.status_PENDING_APPROVAL { background: #FBF1E1; color: #B7791F; }
+.status_APPROVED { background: #E9F0F6; color: #1F4E79; }
+.status_REJECTED { background: #FAEAE9; color: #B42318; }
+.status_IN_PROGRESS { background: #FBF1E1; color: #B7791F; }
+.status_COMPLETED { background: #E7F4EC; color: #1E8E5A; }

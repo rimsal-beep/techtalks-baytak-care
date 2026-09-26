@@ -49,10 +49,11 @@ export default async function Home() {
 
   return (
     <Dashboard
-      totalProperties={totalProperties}
-      needAttention={needAttention}
-      pendingApprovals={pendingApprovals}
-      activeMaintenance={activeMaintenance}
-    />
+    totalProperties={totalProperties}
+    needAttention={needAttention}
+    pendingApprovals={pendingApprovals}
+    activeMaintenance={activeMaintenance}
+    userName={user.name}
+  />
   );
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import DashboardLayout from "../Components/DashBoardCom/DashBoardLayout";
 import style from "../Style/DashboardStyle.module.css";
 
@@ -6,6 +7,7 @@ type DashboardProps = {
   needAttention: number;
   pendingApprovals: number;
   activeMaintenance: number;
+  userName: string;
 };
 
 export function Dashboard({
@@ -13,9 +15,10 @@ export function Dashboard({
   needAttention,
   pendingApprovals,
   activeMaintenance,
+  userName,
 }: DashboardProps) {
   return (
-    <DashboardLayout>
+    <DashboardLayout activePage="dashboard" userName={userName}>
       <div className={style.dashboardIntro}>
         <h2>Good to see you</h2>
         <p>
@@ -26,35 +29,35 @@ export function Dashboard({
       </div>
 
       <div className={style.summaryGrid}>
-        <div className={style.summaryCard}>
+        <Link href="/properties" className={style.summaryCard}>
           <strong>{totalProperties}</strong>
           <span>Total properties</span>
-        </div>
+        </Link>
 
-        <div className={style.summaryCard}>
+        <Link href="/properties" className={style.summaryCard}>
           <strong>{needAttention}</strong>
           <span>Need attention</span>
-        </div>
+        </Link>
 
-        <div className={style.summaryCard}>
+        <Link href="/properties" className={style.summaryCard}>
           <strong>{pendingApprovals}</strong>
           <span>Pending approvals</span>
-        </div>
+        </Link>
 
-        <div className={style.summaryCard}>
+        <Link href="/properties" className={style.summaryCard}>
           <strong>{activeMaintenance}</strong>
           <span>Active maintenance</span>
-        </div>
+        </Link>
       </div>
 
-      <section className={style.dashboardSection}>
+      <Link href="/properties" className={style.dashboardSection} style={{ display: "block", textDecoration: "none" }}>
         <h3>Needs your attention</h3>
         <p>
           {pendingApprovals > 0
             ? `You have ${pendingApprovals} cost estimate${pendingApprovals === 1 ? "" : "s"} waiting for your approval.`
             : "No requests currently need your attention."}
         </p>
-      </section>
+      </Link>
 
       <section className={style.dashboardSection}>
         <h3>Upcoming monthly checks</h3>

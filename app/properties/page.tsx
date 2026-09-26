@@ -42,7 +42,7 @@ export default async function PropertiesPage() {
   });
 
   return (
-    <DashboardLayout>
+    <DashboardLayout activePage="properties" userName={user.name}>
       <div className={style.propertiesHeader}>
         <div>
           <small>YOUR PROPERTIES</small>

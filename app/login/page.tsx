@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     if (response.success) {
       if (response.data?.role === "CARETAKER") {
-        router.push(response.data.propertyId ? "/requests/new" : "/waiting");
+        router.push(response.data.propertyId ? "/caretaker/dashboard" : "/waiting");
       } else {
         router.push("/");
       }

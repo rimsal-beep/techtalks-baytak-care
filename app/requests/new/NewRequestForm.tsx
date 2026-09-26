@@ -52,12 +52,16 @@ export default function NewRequestForm({
   }
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
+    <main className="min-h-screen bg-[#F7F6F3] text-[#181A1B]">
       <div className="mx-auto max-w-4xl px-6 py-8 sm:px-10">
-        <header className="border-b border-slate-200 pb-6">
+        <header className="border-b border-[#E4E1D9] pb-6">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-700" />
-            <span className="text-xl font-bold text-slate-900">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1F4E79] text-white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4.5 w-4.5">
+                <path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" />
+              </svg>
+            </div>
+            <span className="text-[17px] font-semibold text-[#181A1B]">
               Baytak Care
             </span>
           </div>
@@ -65,25 +69,28 @@ export default function NewRequestForm({
 
         <section className="mx-auto max-w-3xl py-10">
           <div className="mb-8">
-            <p className="mb-2 text-sm font-bold tracking-wide text-blue-700">
+            <p className="mb-2 text-[13px] font-semibold tracking-wide text-[#1F4E79]">
               PROPERTY MONITORING
             </p>
 
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-              Submit a Request
+            <h1
+              className="text-[32px] leading-tight text-[#181A1B]"
+              style={{ fontFamily: "'Fraunces', Georgia, serif", fontWeight: 500 }}
+            >
+              Submit a request
             </h1>
 
-            <p className="mt-3 text-lg text-slate-500">
+            <p className="mt-3 text-[15px] text-[#8B8D89]">
               Report an inspection or maintenance issue for this property.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Property */}
             <div>
               <label
                 htmlFor="property"
-                className="mb-2 block text-base font-semibold text-slate-800"
+                className="mb-1.5 block text-[13px] font-semibold text-[#5B5D5A]"
               >
                 Property
               </label>
@@ -93,7 +100,7 @@ export default function NewRequestForm({
                 name="propertyId"
                 value={property.id}
                 disabled
-                className="w-full rounded-xl border border-slate-300 bg-slate-100 px-4 py-4 text-base outline-none"
+                className="w-full rounded-lg border border-[#E4E1D9] bg-[#F1EFEA] px-3.5 py-3 text-sm text-[#5B5D5A] outline-none"
               >
                 <option value={property.id}>
                   {property.address}
@@ -112,7 +119,7 @@ export default function NewRequestForm({
             <div>
               <label
                 htmlFor="title"
-                className="mb-2 block text-base font-semibold text-slate-800"
+                className="mb-1.5 block text-[13px] font-semibold text-[#5B5D5A]"
               >
                 Title
               </label>
@@ -123,25 +130,25 @@ export default function NewRequestForm({
                 type="text"
                 required
                 placeholder="e.g. Bathroom water leak"
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-3 text-sm text-[#181A1B] outline-none transition placeholder:text-[#8B8D89] focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
               />
             </div>
 
            {/* Request Type */}
 <div>
-  <label htmlFor="requestType" className="mb-2 block text-base font-semibold text-slate-800">
-    Issue Type
+  <label htmlFor="requestType" className="mb-1.5 block text-[13px] font-semibold text-[#5B5D5A]">
+    Issue type
   </label>
   <select
     id="requestType"
     name="requestType"
     required
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+    className="w-full rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-3 text-sm text-[#181A1B] outline-none transition focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
   >
     <option value="">Select an issue type</option>
     <option value="PLUMBING">Plumbing</option>
     <option value="ELECTRICAL">Electrical</option>
-    <option value="HVAC">HVAC / Air conditioning</option>
+    <option value="HVAC">HVAC / air conditioning</option>
     <option value="STRUCTURAL">Structural</option>
     <option value="APPLIANCE">Appliance</option>
     <option value="PAINTING">Painting</option>
@@ -154,7 +161,7 @@ export default function NewRequestForm({
             <div>
               <label
                 htmlFor="description"
-                className="mb-2 block text-base font-semibold text-slate-800"
+                className="mb-1.5 block text-[13px] font-semibold text-[#5B5D5A]"
               >
                 Description
               </label>
@@ -165,7 +172,7 @@ export default function NewRequestForm({
                 required
                 rows={4}
                 placeholder="Describe the issue..."
-                className="w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-4 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                className="w-full resize-none rounded-lg border border-[#E4E1D9] bg-white px-3.5 py-3 text-sm text-[#181A1B] outline-none transition placeholder:text-[#8B8D89] focus:border-[#1F4E79] focus:ring-2 focus:ring-[#1F4E79]/15"
               />
             </div>
 
@@ -177,19 +184,11 @@ export default function NewRequestForm({
             <EstimateNoteInput/>
 
             {/* Photo */}
-          
            <PhotoUrl/>
+
             {/* Success message */}
-
-
-
-
-
-
-
-
             {submitted && (
-              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+              <div className="rounded-lg border border-[#C8E6D2] bg-[#E7F4EC] px-4 py-3 text-sm font-medium text-[#1E8E5A]">
                 Request submitted successfully.
               </div>
             )}
@@ -199,16 +198,16 @@ export default function NewRequestForm({
               <button
                 type="button"
                 onClick={() => setSubmitted(false)}
-                className="rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="rounded-lg border border-[#E4E1D9] bg-white px-6 py-3 text-sm font-semibold text-[#5B5D5A] transition hover:bg-[#F1EFEA]"
               >
                 Cancel
               </button>
 
               <button
                 type="submit"
-                className="rounded-xl bg-blue-700 px-7 py-3.5 text-base font-semibold text-white transition hover:bg-blue-800"
+                className="rounded-lg bg-[#1F4E79] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
               >
-                Submit Request
+                Submit request
               </button>
             </div>
           </form>

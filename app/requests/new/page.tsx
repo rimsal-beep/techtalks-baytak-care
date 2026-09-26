@@ -1,19 +1,27 @@
 import { getCurrentUser } from "../../../lib/session";
 import { prisma } from "../../../lib/prisma";
+import { redirect } from "next/navigation";
 import NewRequestForm from "./NewRequestForm";
 
-export default async function NewRequestPage() {
+export default async function NewRequestPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ propertyId?: string }>;
+}) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return <div>Not logged in.</div>;
+    redirect("/login");
   }
 
+  const { propertyId } = await searchParams;
+
   const property = await prisma.property.findFirst({
-    where:
-      user.role === "CARETAKER"
-        ? { caretakerId: user.id }
-        : { ownerId: user.id },
+    where: propertyId
+      ? { id: propertyId, caretakerId: user.id }
+      : user.role === "CARETAKER"
+      ? { caretakerId: user.id }
+      : { ownerId: user.id },
     select: {
       id: true,
       address: true,

@@ -96,6 +96,38 @@ form.section .sectionTitle {
   margin-bottom: 0;
 }
 
+.photoFields {
+  display: grid;
+  gap: 18px;
+}
+
+.photoInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.photoInputRow input {
+  min-width: 0;
+  flex: 1;
+}
+
+.photoAction {
+  width: fit-content;
+  padding: 7px 10px;
+  border: 1px solid #D7D9DA;
+  border-radius: 7px;
+  background: #FFFFFF;
+  color: #1F4E79;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.photoAction:hover {
+  background: #F4F6F7;
+}
+
 .formField label {
   color: #4F555B;
   font-size: 15px;

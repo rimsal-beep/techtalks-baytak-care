@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   }
 
   if (user.role !== "OWNER") {
-    redirect("/waiting");
+    redirect("/caretaker/dashboard");
   }
 
   return (

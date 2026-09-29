@@ -11,7 +11,7 @@ export default async function Home() {
   }
 
   if (user.role === "CARETAKER") {
-    redirect("/waiting");
+    redirect("/caretaker/dashboard");
   }
 
   const properties = await prisma.property.findMany({

@@ -14,6 +14,8 @@ export default function CompletionForm({
 }: CompletionFormProps) {
   const router = useRouter();
 
+  const [beforePhotoUrls, setBeforePhotoUrls] = useState([""]);
+  const [afterPhotoUrls, setAfterPhotoUrls] = useState([""]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,15 +30,21 @@ export default function CompletionForm({
     const formData = new FormData(event.currentTarget);
 
     const actualCost = Number(formData.get("actualCost"));
-    const beforePhotoUrl = String(formData.get("beforePhotoUrl") ?? "");
-    const afterPhotoUrl = String(formData.get("afterPhotoUrl") ?? "");
+    const beforePhotoUrls = formData
+      .getAll("beforePhotoUrls")
+      .map((url) => String(url).trim())
+      .filter(Boolean);
+    const afterPhotoUrls = formData
+      .getAll("afterPhotoUrls")
+      .map((url) => String(url).trim())
+      .filter(Boolean);
     const receiptUrl = String(formData.get("receiptUrl") ?? "");
 
     const result = await completeMaintenanceRequest({
       requestId,
       actualCost,
-      beforePhotoUrl,
-      afterPhotoUrl,
+      beforePhotoUrls,
+      afterPhotoUrls,
       receiptUrl,
     });
 
@@ -73,24 +81,74 @@ export default function CompletionForm({
         />
       </div>
 
-      <div className={detailStyle.formField}>
-        <label htmlFor="before-photo-link">Before-photo link</label>
-        <input
-          id="before-photo-link"
-          name="beforePhotoUrl"
-          type="url"
-          placeholder="https://example.com/before-photo.jpg"
-        />
-      </div>
+      <div className={detailStyle.photoFields}>
+        <div className={detailStyle.formField}>
+          <label>Before-photo links</label>
+          {beforePhotoUrls.map((_, index) => (
+            <div className={detailStyle.photoInputRow} key={`before-${index}`}>
+              <input
+                aria-label={`Before-photo link ${index + 1}`}
+                name="beforePhotoUrls"
+                type="url"
+                placeholder="https://example.com/before-photo.jpg"
+              />
+              {beforePhotoUrls.length > 1 && (
+                <button
+                  type="button"
+                  className={detailStyle.photoAction}
+                  onClick={() =>
+                    setBeforePhotoUrls((urls) =>
+                      urls.filter((_, urlIndex) => urlIndex !== index)
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            className={detailStyle.photoAction}
+            onClick={() => setBeforePhotoUrls((urls) => [...urls, ""])}
+          >
+            Add before-photo
+          </button>
+        </div>
 
-      <div className={detailStyle.formField}>
-        <label htmlFor="after-photo-link">After-photo link</label>
-        <input
-          id="after-photo-link"
-          name="afterPhotoUrl"
-          type="url"
-          placeholder="https://example.com/after-photo.jpg"
-        />
+        <div className={detailStyle.formField}>
+          <label>After-photo links</label>
+          {afterPhotoUrls.map((_, index) => (
+            <div className={detailStyle.photoInputRow} key={`after-${index}`}>
+              <input
+                aria-label={`After-photo link ${index + 1}`}
+                name="afterPhotoUrls"
+                type="url"
+                placeholder="https://example.com/after-photo.jpg"
+              />
+              {afterPhotoUrls.length > 1 && (
+                <button
+                  type="button"
+                  className={detailStyle.photoAction}
+                  onClick={() =>
+                    setAfterPhotoUrls((urls) =>
+                      urls.filter((_, urlIndex) => urlIndex !== index)
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          ))}
+          <button
+            type="button"
+            className={detailStyle.photoAction}
+            onClick={() => setAfterPhotoUrls((urls) => [...urls, ""])}
+          >
+            Add after-photo
+          </button>
+        </div>
       </div>
 
       <div className={detailStyle.formField}>

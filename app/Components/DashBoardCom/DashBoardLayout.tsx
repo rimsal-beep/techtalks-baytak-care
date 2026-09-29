@@ -62,7 +62,7 @@ export default function DashboardLayout({ children, activePage = "dashboard", us
               Properties
             </Link>
 
-            <Link href="/properties" className={activePage === "requests" ? style.activeNav : style.navItem}>
+            <Link href="/requests" className={activePage === "requests" ? style.activeNav : style.navItem}>
               {icons.requests}
               Requests
             </Link>

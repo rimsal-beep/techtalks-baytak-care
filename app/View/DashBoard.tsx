@@ -39,7 +39,7 @@ export function Dashboard({
           <span>Need attention</span>
         </Link>
 
-        <Link href="/properties" className={style.summaryCard}>
+        <Link href="/requests/pending-approvals" className={style.summaryCard}>
           <strong>{pendingApprovals}</strong>
           <span>Pending approvals</span>
         </Link>

@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     if (response.success) {
       if (response.data?.role === "CARETAKER") {
-        router.push(response.data.propertyId ? "/caretaker/dashboard" : "/waiting");
+        router.push("/caretaker/dashboard");
       } else {
         router.push("/");
       }
@@ -74,6 +74,7 @@ export default function LoginPage() {
               type="email"
               placeholder="Enter your email"
               required
+              suppressHydrationWarning
             />
           </div>
 
@@ -86,6 +87,7 @@ export default function LoginPage() {
               type="password"
               placeholder="Enter your password"
               required
+              suppressHydrationWarning
             />
           </div>
 
@@ -113,6 +115,7 @@ export default function LoginPage() {
               width: "100%",
               opacity: loading ? 0.6 : 1,
             }}
+            suppressHydrationWarning
           >
             {loading ? "Logging in..." : "Log in"}
           </button>

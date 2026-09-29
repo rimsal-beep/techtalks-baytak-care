@@ -36,7 +36,7 @@ export default async function PropertyDetailsPage({
   }
 
   if (user.role === "CARETAKER") {
-    redirect("/waiting");
+    redirect("/caretaker/dashboard");
   }
 
   const { propertyId } = await params;

@@ -16,7 +16,7 @@ export default async function NewPropertyPage() {
       where: { caretakerId: user.id },
       select: { id: true },
     });
-    redirect(assignedProperty ? "/requests/new" : "/waiting");
+    redirect(assignedProperty ? "/requests/new" : "/caretaker/dashboard");
   }
 
   return (

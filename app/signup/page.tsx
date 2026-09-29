@@ -58,7 +58,7 @@ export default function SignupPage() {
     if (role === "OWNER") {
       window.location.href = "/profile";
     } else {
-      window.location.href = "/waiting";
+      window.location.href = "/caretaker/dashboard";
     }
   }
 

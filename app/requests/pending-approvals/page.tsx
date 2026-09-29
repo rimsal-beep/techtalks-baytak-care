@@ -13,8 +13,8 @@ export default async function PendingApprovalsPage() {
     redirect("/login");
   }
 
-  if (user.role !== "OWNER") {
-    redirect("/waiting");
+  if (user.role === "CARETAKER") {
+    redirect("/caretaker/dashboard");
   }
 
   const requests = await prisma.maintenanceRequest.findMany({

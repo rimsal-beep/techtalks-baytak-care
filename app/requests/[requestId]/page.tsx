@@ -143,6 +143,80 @@ export default async function RequestDetailPage({
           )}
         </section>
 
+        {request.status === "COMPLETED" && (
+          <section className={detailStyle.section}>
+            <h3 className={detailStyle.sectionTitle}>Completed work</h3>
+
+            <div className={detailStyle.row}>
+              <span className={detailStyle.label}>Actual cost</span>
+              <span className={detailStyle.actualCostValue}>
+                {request.actualCost != null
+                  ? `${request.currency} ${request.actualCost.toFixed(2)}`
+                  : "Not provided"}
+              </span>
+            </div>
+
+            <div className={detailStyle.comparisonGrid}>
+              {[
+                { label: "BEFORE", photos: request.beforePhotoUrls ?? [] },
+                { label: "AFTER", photos: request.afterPhotoUrls ?? [] },
+              ].map(({ label, photos }) => (
+                <div key={label} className={detailStyle.galleryPanel}>
+                  <h4 className={detailStyle.galleryTitle}>{label}</h4>
+
+                  {photos.length === 0 ? (
+                    <p className={detailStyle.muted}>
+                      No {label.toLowerCase()} photos submitted.
+                    </p>
+                  ) : (
+                    <div className={detailStyle.galleryGrid}>
+                      {photos.map((url, index) => (
+                        <a
+                          key={`${url}-${index}`}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={detailStyle.galleryItem}
+                          aria-label={`View ${label.toLowerCase()} photo ${index + 1} (opens in a new tab)`}
+                        >
+                          <img
+                            src={url}
+                            alt={`${label === "BEFORE" ? "Before" : "After"} work photo ${index + 1}`}
+                            className={detailStyle.galleryImage}
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {request.receiptUrl && (
+              <a
+                href={request.receiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={detailStyle.receiptLink}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  aria-hidden="true"
+                >
+                  <rect x="5" y="3" width="14" height="18" rx="2" />
+                  <path d="M9 8h6M9 12h6M9 16h4" />
+                </svg>
+                View receipt
+              </a>
+            )}
+          </section>
+        )}
+
         {request.property.caretakerId === user.id &&
           request.status === "APPROVED" && (
            <CompletionForm requestId={request.id} />

@@ -240,3 +240,53 @@
     grid-template-columns: 1fr;
   }
 }
+  .checklist {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #F1EFEA;
+}
+
+.checklistTitle {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #181A1B;
+}
+
+.checklistItems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checklistItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: #5B5D5A;
+  cursor: pointer;
+}
+
+.checklistItem input {
+  width: 16px;
+  height: 16px;
+  accent-color: #1F4E79;
+  cursor: pointer;
+}
+
+.checklistItem input:disabled {
+  cursor: default;
+}
+
+.checklistLoading {
+  color: #8B8D89;
+  font-size: 11px;
+  margin-left: auto;
+}
+
+.checklistError {
+  margin: 10px 0 0;
+  color: #B42318;
+  font-size: 12px;
+}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { logout } from "@/app/actions/logout";
+import Checklist from "./Checklist";
 import style from "./CaretakerDashboard.module.css";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -26,16 +27,19 @@ export default async function CaretakerDashboardPage() {
   }
 
   const properties = await prisma.property.findMany({
-    where: {
-      caretakerId: user.id,
+  where: {
+    caretakerId: user.id,
+  },
+  select: {
+    id: true,
+    address: true,
+    city: true,
+    checklistItems: {
+      where: { completed: true },
+      select: { text: true },
     },
-    select: {
-      id: true,
-      address: true,
-      city: true,
-    },
-  });
-
+  },
+});
   if (properties.length === 0) {
     return (
       <div className={style.page}>
@@ -111,16 +115,21 @@ export default async function CaretakerDashboardPage() {
             <div key={property.id} className={style.propertyCard}>
               <h3>{property.address}</h3>
 
-              {property.city && (
-                <p className={style.city}>{property.city}</p>
-              )}
+             {property.city && (
+  <p className={style.city}>{property.city}</p>
+)}
 
-              <Link
-                href={`/requests/new?propertyId=${property.id}`}
-                className={style.reportButton}
-              >
-                Report an issue
-              </Link>
+<Checklist
+  propertyId={property.id}
+  initialCompletedItems={property.checklistItems.map((item) => item.text)}
+/>
+
+<Link
+  href={`/requests/new?propertyId=${property.id}`}
+  className={style.reportButton}
+>
+  Report an issue
+</Link>
             </div>
           ))}
         </div>

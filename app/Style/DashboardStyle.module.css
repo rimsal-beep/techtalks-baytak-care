@@ -232,19 +232,51 @@
 }
 
 .propertyCard {
+  position: relative;
   display: block;
   padding: 20px 22px;
   border: 1px solid #E4E1D9;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #FFFFFF;
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s ease;
+}
+
+.propertyCard::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: #1F4E79;
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .propertyCard:hover {
-  border-color: #1F4E79;
-  transform: translateY(-1px);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(31, 78, 121, 0.1);
+  border-color: #D8E4EE;
+}
+
+.propertyCard:hover::after {
+  transform: scaleY(1);
+}
+
+.propertyCard:hover h3 {
+  color: #1F4E79;
+}
+
+.propertyCard h3 {
+  transition: color 0.2s ease;
 }
 
 .propertyCard h3 {
@@ -253,6 +285,7 @@
   font-weight: 500;
   color: #181A1B;
   font-size: 18px;
+  transition: color 0.2s ease;
 }
 
 .propertyCity {

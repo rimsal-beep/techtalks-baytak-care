@@ -133,7 +133,7 @@ export async function createMaintenanceRequest(
       };
     }
 
-    const maintenanceRequest = await prisma.maintenanceRequest.create({
+  const maintenanceRequest = await prisma.maintenanceRequest.create({
    data:{
     title: input.title.trim(),
     requestType: input.requestType.trim() as
@@ -172,8 +172,8 @@ export async function createMaintenanceRequest(
 type CompleteMaintenanceRequestInput = {
   requestId: string;
   actualCost: number;
-  beforePhotoUrl?: string;
-  afterPhotoUrl?: string;
+  beforePhotoUrls?: string[];
+  afterPhotoUrls?: string[];
   receiptUrl?: string;
 };
 
@@ -235,8 +235,12 @@ export async function completeMaintenanceRequest(
     };
   }
 
-  const beforePhotoUrl = input.beforePhotoUrl?.trim();
-  const afterPhotoUrl = input.afterPhotoUrl?.trim();
+  const beforePhotoUrls = (input.beforePhotoUrls ?? [])
+    .map((url) => url.trim())
+    .filter(Boolean);
+  const afterPhotoUrls = (input.afterPhotoUrls ?? [])
+    .map((url) => url.trim())
+    .filter(Boolean);
   const receiptUrl = input.receiptUrl?.trim();
 
   try {
@@ -247,8 +251,8 @@ export async function completeMaintenanceRequest(
           status: "COMPLETED",
           completedAt: new Date(),
           actualCost: input.actualCost,
-          beforePhotoUrls: beforePhotoUrl ? [beforePhotoUrl] : [],
-          afterPhotoUrls: afterPhotoUrl ? [afterPhotoUrl] : [],
+          beforePhotoUrls,
+          afterPhotoUrls,
           receiptUrl: receiptUrl || null,
         },
       });

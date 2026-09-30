@@ -277,3 +277,130 @@ export async function completeMaintenanceRequest(
     };
   }
 }
+
+type CompleteChecklistItemInput = {
+  propertyId: string;
+  text: string;
+};
+
+export async function completeChecklistItem(
+  input: CompleteChecklistItemInput
+) {
+  if (!input.propertyId?.trim()) {
+    return {
+      success: false,
+      error: "Property ID is required.",
+    };
+  }
+
+  if (!input.text?.trim()) {
+    return {
+      success: false,
+      error: "Checklist item text is required.",
+    };
+  }
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "Not logged in.",
+    };
+  }
+
+  if (user.role !== "CARETAKER") {
+    return {
+      success: false,
+      error: "Only caretakers can complete checklist items.",
+    };
+  }
+
+  const property = await prisma.property.findUnique({
+    where: { id: input.propertyId },
+    select: {
+      caretakerId: true,
+    },
+  });
+
+  if (!property) {
+    return {
+      success: false,
+      error: "Property not found.",
+    };
+  }
+
+  if (property.caretakerId !== user.id) {
+    return {
+      success: false,
+      error: "You are not authorized for this property.",
+    };
+  }
+
+  const checklistText = input.text.trim();
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const existingItem = await tx.checklistItem.findFirst({
+        where: {
+          propertyId: input.propertyId,
+          text: checklistText,
+        },
+      });
+
+      if (existingItem?.completed) {
+        throw new Error("CHECKLIST_ITEM_ALREADY_COMPLETED");
+      }
+
+      if (existingItem) {
+        await tx.checklistItem.update({
+          where: { id: existingItem.id },
+          data: {
+            completed: true,
+            completedById: user.id,
+            completedAt: new Date(),
+          },
+        });
+      } else {
+        await tx.checklistItem.create({
+          data: {
+            text: checklistText,
+            completed: true,
+            completedById: user.id,
+            completedAt: new Date(),
+            propertyId: input.propertyId,
+          },
+        });
+      }
+
+      await tx.activityLog.create({
+        data: {
+          action: `Checklist completed: ${checklistText}`,
+          performedById: user.id,
+          maintenanceRequestId: null,
+        },
+      });
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "CHECKLIST_ITEM_ALREADY_COMPLETED"
+    ) {
+      return {
+        success: false,
+        error: "Checklist item is already completed.",
+      };
+    }
+
+    console.error("Failed to complete checklist item:", error);
+
+    return {
+      success: false,
+      error: "Failed to complete checklist item.",
+    };
+  }
+}

@@ -228,7 +228,7 @@ export default async function PropertyDetailsPage({
                     </p>
 
                     <p className={detailStyle.activityRequest}>
-                      {log.maintenanceRequest.title}
+                      {log.maintenanceRequest?.title || "Activity"}
                     </p>
 
                     <p className={detailStyle.activityMeta}>

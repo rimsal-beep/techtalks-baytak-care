@@ -165,9 +165,8 @@ model ActivityLog {
   performedById String
   performedBy   User   @relation(fields: [performedById], references: [id])
 
-  maintenanceRequestId String
-  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id])
-
+  maintenanceRequestId String?
+  maintenanceRequest     MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
   @@index([maintenanceRequestId])
 }
 

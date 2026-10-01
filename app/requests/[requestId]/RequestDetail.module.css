@@ -182,9 +182,84 @@ form.section .sectionTitle {
   outline: 3px solid rgb(31 78 121 / 20%);
   outline-offset: 2px;
 }
+.actualCostValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.galleryPanel {
+  min-width: 0;
+}
+
+.galleryTitle {
+  margin: 0 0 10px;
+  color: #5B5D5A;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+}
+
 .galleryGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-top: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 280px));
+  gap: 12px;
+}
+
+.galleryItem {
+  display: block;
+  overflow: hidden;
+  border: 1px solid #E4E1D9;
+  border-radius: 8px;
+  background: #F7F6F3;
+}
+
+.galleryItem:hover {
+  border-color: #1F4E79;
+}
+
+.galleryItem:focus-visible,
+.receiptLink:focus-visible {
+  outline: 3px solid #1F4E79;
+  outline-offset: 3px;
+}
+
+.galleryImage {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.receiptLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 22px;
+  padding: 12px 14px;
+  border: 1px solid #F1EFEA;
+  border-radius: 8px;
+  background: #F7F6F3;
+  color: #1F4E79;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.receiptLink svg {
+  flex-shrink: 0;
+}
+
+.receiptLink:hover {
+  background: #F1EFEA;
+  text-decoration: none;
 }

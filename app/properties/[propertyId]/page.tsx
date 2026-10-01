@@ -24,6 +24,14 @@ const STATUS_CLASS: Record<string, string> = {
   COMPLETED: detailStyle.pillSuccess,
 };
 
+const CHECKLIST_ITEMS = [
+  "Check water and plumbing",
+  "Check electrical systems",
+  "Check doors and windows",
+  "Check air conditioning",
+  "Check general property condition",
+];
+
 export default async function PropertyDetailsPage({
   params,
 }: {
@@ -55,12 +63,28 @@ export default async function PropertyDetailsPage({
           name: true,
         },
       },
+      checklistItems: {
+        where: {
+          completed: true,
+        },
+        select: {
+          text: true,
+        },
+      },
     },
   });
 
   if (!property) {
     notFound();
   }
+
+  const completedChecklistItems = new Set(
+    property.checklistItems.map((item) => item.text)
+  );
+
+  const completedChecklistCount = CHECKLIST_ITEMS.filter((item) =>
+    completedChecklistItems.has(item)
+  ).length;
 
   const requests = await prisma.maintenanceRequest.findMany({
     where: {
@@ -149,6 +173,52 @@ export default async function PropertyDetailsPage({
             <span>Active maintenance</span>
           </div>
         </div>
+
+        <section className={detailStyle.section}>
+          <div className={detailStyle.checklistHeader}>
+            <h3 className={detailStyle.sectionTitle}>
+              Property checklist
+            </h3>
+
+            <span className={detailStyle.checklistProgress}>
+              {completedChecklistCount}/{CHECKLIST_ITEMS.length} completed
+            </span>
+          </div>
+
+          <div className={detailStyle.checklistList}>
+            {CHECKLIST_ITEMS.map((text) => {
+              const completed = completedChecklistItems.has(text);
+
+              return (
+                <div
+                  key={text}
+                  className={detailStyle.checklistItem}
+                >
+                  <input
+                    type="checkbox"
+                    checked={completed}
+                    disabled
+                    readOnly
+                  />
+
+                  <span className={detailStyle.checklistText}>
+                    {text}
+                  </span>
+
+                  <span
+                    className={
+                      completed
+                        ? detailStyle.checklistCompleted
+                        : detailStyle.checklistPending
+                    }
+                  >
+                    {completed ? "Completed" : "Not completed"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         <section className={detailStyle.section}>
           <h3 className={detailStyle.sectionTitle}>

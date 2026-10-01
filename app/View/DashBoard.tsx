@@ -34,12 +34,12 @@ export function Dashboard({
           <span>Total properties</span>
         </Link>
 
-        <Link href="/properties" className={style.summaryCard}>
+        <Link href="/requests/pending-approvals/" className={style.summaryCard}>
           <strong>{needAttention}</strong>
           <span>Need attention</span>
         </Link>
 
-        <Link href="/requests/pending-approvals" className={style.summaryCard}>
+        <Link href="/requests/pending-approvals/" className={style.summaryCard}>
           <strong>{pendingApprovals}</strong>
           <span>Pending approvals</span>
         </Link>

@@ -424,3 +424,88 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(31, 78, 121, 0.08);
 }
+.sidebar {
+  border-right: none;
+  background: #14213D;
+}
+
+.sidebarLogo {
+  background: transparent;
+  color: #F4EFE6;
+}
+.Body .sidebar {
+  border-right: none;
+  background: #14213D;
+}
+
+.Body .sidebar .sidebarLogo {
+  background: transparent;
+  color: #FFFFFF;
+}
+
+.Body .sidebar .sidebarBrand span {
+  color: #FFFFFF;
+}
+
+.Body .sidebar .navItem {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.Body .sidebar .navItem:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #FFFFFF;
+  text-decoration: none;
+}
+
+.Body .sidebar .activeNav {
+  position: relative;
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+}
+
+.Body .sidebar .activeNav:hover {
+  text-decoration: none;
+}
+
+.Body .sidebar .activeNav::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  bottom: 11px;
+  left: -12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #B9A57F;
+}
+
+.Body .sidebar .sidebarFoot {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.Body .sidebar .sidebarAvatar {
+  background: #B9A57F;
+  color: #14213D;
+}
+
+.Body .sidebar .sidebarUserName {
+  color: #FFFFFF;
+}
+
+.Body .sidebar .logoutBtn {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.Body .sidebar .logoutBtn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #FFFFFF;
+}
+
+@media (max-width: 700px) {
+  .Body .sidebar {
+    border-bottom: none;
+  }
+
+  .Body .sidebar .activeNav::before {
+    display: none;
+  }
+}

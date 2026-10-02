@@ -3,6 +3,8 @@
 import { FormEvent, useState } from "react";
 import { login } from "../actions/login";
 import { useRouter } from "next/navigation";
+import AuthShell from "../Components/AuthShell";
+import f from "../Components/AuthShell.module.css";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
@@ -34,104 +36,57 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-wrap">
-      <div className="auth-box fade-in">
-        <div className="brand-mark">
-          <div className="logo">B</div>
-          <span>Baytak</span>
-        </div>
+    <AuthShell>
+      <h1 className={f.title}>Welcome back</h1>
+      <p className={f.sub}>Log in to manage your property with confidence.</p>
 
-        <div style={{ marginBottom: "24px" }}>
-          <h1
-            style={{
-              fontSize: "30px",
-              lineHeight: "1.2",
-              margin: "0 0 8px",
-            }}
-          >
-            Welcome back
-          </h1>
+      <form onSubmit={handleSubmit}>
+        <div className={f.field}>
+          <label className={f.label} htmlFor="email">
+            Email
+          </label>
 
-          <p
-            className="muted"
-            style={{
-              fontSize: "14px",
-              lineHeight: "1.5",
-              margin: 0,
-            }}
-          >
-            Log in to manage your property with confidence.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="email">Email</label>
-
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Enter your email"
-              required
-              suppressHydrationWarning
-            />
-          </div>
-
-          <div className="field">
-            <label htmlFor="password">Password</label>
-
-            <input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              required
-              suppressHydrationWarning
-            />
-          </div>
-
-          {error && (
-            <div
-              style={{
-                background: "var(--danger-tint)",
-                color: "var(--danger)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-sm)",
-                padding: "10px 12px",
-                fontSize: "12.5px",
-                marginBottom: "14px",
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="primary"
-            disabled={loading}
-            style={{
-              width: "100%",
-              opacity: loading ? 0.6 : 1,
-            }}
+          <input
+            className={f.input}
+            id="email"
+            name="email"
+            type="email"
+            placeholder="Enter your email"
+            required
             suppressHydrationWarning
-          >
-            {loading ? "Logging in..." : "Log in"}
-          </button>
-        </form>
+          />
+        </div>
 
-        <p
-          className="small muted"
-          style={{
-            textAlign: "center",
-            marginTop: "18px",
-          }}
-        >
-          Do not have an account?{" "}
-          <a href="/signup">Create an account</a>
-        </p>
-      </div>
-    </main>
+        <div className={f.field}>
+          <label className={f.label} htmlFor="password">
+            Password
+          </label>
+
+          <input
+            className={f.input}
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Enter your password"
+            required
+            suppressHydrationWarning
+          />
+        </div>
+
+        {error && (
+          <div className={f.error} role="alert">
+            {error}
+          </div>
+        )}
+
+        <button type="submit" className={f.submit} disabled={loading} suppressHydrationWarning>
+          {loading ? "Logging in..." : "Log in"}
+        </button>
+      </form>
+
+      <p className={f.foot}>
+        Do not have an account? <a href="/signup">Create an account</a>
+      </p>
+    </AuthShell>
   );
 }

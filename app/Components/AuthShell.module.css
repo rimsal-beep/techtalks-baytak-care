@@ -1,0 +1,317 @@
+/* Login and signup: a navy brand panel on the left, the form on the right */
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(380px, 46%) minmax(0, 1fr);
+  min-height: 100vh;
+  background: #F7F6F3;
+}
+
+/* ---------- left panel ---------- */
+.panel {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100vh;
+  padding: 44px 48px 0;
+  overflow: hidden;
+  background: #14213D;
+  color: #FFFFFF;
+}
+
+.panelBrand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #FFFFFF;
+}
+
+.panelBrand span {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.headline {
+  margin: 0;
+  color: #FFFFFF;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(32px, 3.2vw, 46px);
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
+}
+
+.headline em {
+  color: #C9D3E6;
+  font-style: italic;
+}
+
+.lead {
+  max-width: 400px;
+  margin: 18px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.art {
+  position: relative;
+  height: 340px;
+  margin: 0 -48px;
+}
+
+.art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.art::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  height: 110px;
+  background: linear-gradient(#14213D, rgba(20, 33, 61, 0));
+}
+
+/* ---------- right side ---------- */
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 32px;
+}
+
+.card {
+  width: 100%;
+  max-width: 440px;
+  padding: 36px;
+  border: 1px solid #E4E1D9;
+  border-radius: 20px;
+  background: #FFFFFF;
+  box-shadow: 0 16px 40px rgba(24, 26, 27, 0.06);
+  animation: rise 0.35s ease-out both;
+}
+
+.cardWide {
+  max-width: 640px;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.mobileBrand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 26px;
+  color: #14213D;
+}
+
+.mobileBrand span {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+/* ---------- form pieces (used by the login and signup pages) ---------- */
+.title {
+  margin: 0 0 8px;
+  color: #181A1B;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+
+.sub {
+  margin: 0 0 26px;
+  color: #8B8D89;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.label {
+  display: block;
+  margin-bottom: 7px;
+  color: #181A1B;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #E4E1D9;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: #181A1B;
+  font: inherit;
+  font-size: 14.5px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input::placeholder {
+  color: #9B958B;
+}
+
+.input:focus {
+  border-color: #1F4E79;
+  box-shadow: 0 0 0 3px #E9F0F6;
+}
+
+.roles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.role {
+  padding: 14px 16px;
+  border: 1.5px solid #E4E1D9;
+  border-radius: 14px;
+  background: #FFFFFF;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.role:hover {
+  border-color: #1F4E79;
+}
+
+.role b {
+  display: block;
+  color: #181A1B;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.role span {
+  display: block;
+  margin-top: 3px;
+  color: #8B8D89;
+  font-size: 12.5px;
+}
+
+.roleOn {
+  border-color: #1F4E79;
+  background: #E9F0F6;
+}
+
+.roleOn b {
+  color: #1F4E79;
+}
+
+.error {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border: 1px solid #F3D4D0;
+  border-radius: 10px;
+  background: #FAEAE9;
+  color: #B42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.submit {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  background: #1F4E79;
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.submit:hover:not(:disabled) {
+  background: #163A5C;
+}
+
+.submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.foot {
+  margin: 20px 0 0;
+  color: #8B8D89;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.foot a {
+  color: #1F4E79;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.foot a:hover {
+  text-decoration: underline;
+}
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 960px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    display: none;
+  }
+
+  .mobileBrand {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 24px 16px;
+  }
+
+  .card,
+  .cardWide {
+    padding: 26px 20px;
+    border-radius: 16px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .roles {
+    grid-template-columns: 1fr;
+  }
+}

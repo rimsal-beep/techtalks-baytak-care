@@ -46,7 +46,7 @@ export default function Footer() {
           </ul>
         </div>
       </div>
-      <div className="big" aria-hidden="true">Baytak<em className="s">care</em></div>
+      
       <div className="legal">
         <span>© 2026 Baytak Care.</span>
         <span>Made between Beirut and everywhere else.</span>

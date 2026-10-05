@@ -1,0 +1,1 @@
+export const REJECTION_REASON_MAX_LENGTH = 500;

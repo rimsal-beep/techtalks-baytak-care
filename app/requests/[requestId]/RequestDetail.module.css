@@ -263,3 +263,45 @@ form.section .sectionTitle {
   background: #F1EFEA;
   text-decoration: none;
 }
+
+.rejectionDialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  margin: auto;
+  padding: 24px;
+  overflow-y: auto;
+  border: 1px solid #E4E1D9;
+  border-radius: 14px;
+  background: #FFFFFF;
+  color: #181A1B;
+  box-shadow: 0 20px 60px rgb(14 24 38 / 25%);
+}
+
+.rejectionDialog::backdrop {
+  background: rgb(14 24 38 / 40%);
+}
+
+.formField textarea {
+  width: 100%;
+  padding: 12px 15px;
+  resize: vertical;
+  border: 1px solid #D7D9DA;
+  border-radius: 7px;
+  background: #FFFFFF;
+  color: #172033;
+  font: inherit;
+}
+
+.formField textarea:focus {
+  outline: 2px solid #1F4E79;
+  outline-offset: 2px;
+}
+
+.rejectionReason {
+  margin: 0;
+  color: #5B5D5A;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

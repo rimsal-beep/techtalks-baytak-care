@@ -175,7 +175,7 @@ export default async function CaretakerDashboardPage() {
                 href={`/requests/${request.id}`}
                 className={style.requestRow}
               >
-                <div>
+                <div className={style.requestContent}>
                   <p className={style.requestTitle}>
                     {request.title}
                   </p>
@@ -191,6 +191,13 @@ export default async function CaretakerDashboardPage() {
                           }
                         )}
                   </p>
+
+                  {request.status === "REJECTED" && (
+                    <p className={style.rejectionReason}>
+                      <strong>Rejection reason: </strong>
+                      {request.rejectionReason?.trim() || "No rejection reason recorded."}
+                    </p>
+                  )}
                 </div>
 
                 <span

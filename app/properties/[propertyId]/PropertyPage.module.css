@@ -1077,3 +1077,12 @@ a.contact:hover {
   .beforeAfter { grid-template-columns: 1fr; }
   .panel { top: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); }
 }
+
+.rejectionReason {
+  margin: 0;
+  color: #5B5D5A;
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

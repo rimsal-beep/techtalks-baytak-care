@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { REJECTION_REASON_MAX_LENGTH } from "@/lib/rejectionReason";
 
 export async function approveRequest(requestId: string) {
   const user = await getCurrentUser();
@@ -81,6 +82,13 @@ export async function rejectRequest(requestId: string, reason: string) {
 
   if (!rejectionReason) {
     return { success: false, error: "Rejection reason is required." };
+  }
+
+  if (rejectionReason.length > REJECTION_REASON_MAX_LENGTH) {
+    return {
+      success: false,
+      error: `Rejection reason must be ${REJECTION_REASON_MAX_LENGTH} characters or fewer.`,
+    };
   }
 
   const request = await prisma.maintenanceRequest.findUnique({

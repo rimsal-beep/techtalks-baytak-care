@@ -83,6 +83,15 @@ export default async function RequestDetailPage({
             <ApprovalActions requestId={request.id} />
           )}
 
+        {request.status === "REJECTED" && (
+          <section className={detailStyle.section}>
+            <h3 className={detailStyle.sectionTitle}>Rejection reason</h3>
+            <p className={detailStyle.rejectionReason}>
+              {request.rejectionReason?.trim() || "No rejection reason recorded."}
+            </p>
+          </section>
+        )}
+
         <section className={detailStyle.section}>
           <h3 className={detailStyle.sectionTitle}>Details</h3>
 

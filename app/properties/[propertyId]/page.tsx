@@ -662,6 +662,15 @@ export default async function PropertyDetailsPage({
                   )}
                 </dl>
 
+                {selected.status === "REJECTED" && (
+                  <div className={s.panelBlock}>
+                    <h4 className={s.panelHeading}>Rejection reason</h4>
+                    <p className={s.rejectionReason}>
+                      {selected.rejectionReason?.trim() || "No rejection reason recorded."}
+                    </p>
+                  </div>
+                )}
+
                 <ol className={s.steps}>
                   {STEPS.map((label, index) => {
                     const current = stepIndex(selected.status);

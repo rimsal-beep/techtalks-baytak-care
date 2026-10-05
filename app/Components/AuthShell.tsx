@@ -1,12 +1,7 @@
 import type { ReactNode } from "react";
 import BrandMark from "./BrandMark";
-import { PropertyArt } from "../properties/PropertyUI";
 import s from "./AuthShell.module.css";
 
-/**
- * The frame shared by the login and signup pages: a navy brand panel on the left
- * (hidden on phones) and the form on the right. Pass `wide` for the signup form.
- */
 export default function AuthShell({
   children,
   wide = false,
@@ -22,17 +17,13 @@ export default function AuthShell({
           <span>Baytak Care</span>
         </div>
 
-        <div>
+        <div className={s.copy}>
           <p className={s.headline}>
             Your home, <em>cared for</em> from anywhere.
           </p>
           <p className={s.lead}>
             Monitor, maintain and stay connected to your property, even when you&apos;re miles away.
           </p>
-        </div>
-
-        <div className={s.art}>
-          <PropertyArt seed="baytak-auth" viewBox="0 40 800 440" />
         </div>
       </aside>
 

@@ -1,71 +1,12 @@
-/* Login and signup: a navy brand panel on the left, the form on the right */
+/* Login and signup: one centred card */
 
 .page {
-  display: grid;
-  grid-template-columns: minmax(380px, 46%) minmax(0, 1fr);
-  min-height: 100vh;
-  background: #F7F6F3;
-}
-
-/* ---------- left panel ---------- */
-.panel {
-  position: sticky;
-  top: 0;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100vh;
-  padding: 44px 48px ;
-  overflow: hidden;
-  background: #14213D;
-  color: #FFFFFF;
-}
-
-.panelBrand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: #FFFFFF;
-}
-
-.panelBrand span {
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.headline {
-  margin: 0;
-  color: #FFFFFF;
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: clamp(32px, 3.2vw, 46px);
-  font-weight: 500;
-  letter-spacing: -0.8px;
-  line-height: 1.1;
-}
-
-.headline em {
-  color: #C9D3E6;
-  font-style: italic;
-}
-
-.lead {
-  max-width: 400px;
-  margin: 18px 0 0;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 16px;
-  line-height: 1.55;
-}
-
-
-
-/* ---------- right side ---------- */
-.main {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 32px;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: #F7F6F3;
 }
 
 .card {
@@ -88,15 +29,15 @@
   to { opacity: 1; transform: none; }
 }
 
-.mobileBrand {
-  display: none;
+.brand {
+  display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 26px;
   color: #14213D;
 }
 
-.mobileBrand span {
+.brand span {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 19px;
   font-weight: 500;
@@ -260,23 +201,9 @@
   text-decoration: underline;
 }
 
-/* ---------- smaller screens ---------- */
-@media (max-width: 960px) {
-  .page {
-    grid-template-columns: 1fr;
-  }
-
-  .panel {
-    display: none;
-  }
-
-  .mobileBrand {
-    display: flex;
-  }
-}
-
+/* ---------- phones ---------- */
 @media (max-width: 640px) {
-  .main {
+  .page {
     padding: 24px 16px;
   }
 
@@ -286,14 +213,8 @@
     border-radius: 16px;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
+  .grid,
   .roles {
     grid-template-columns: 1fr;
   }
-}
-.copy {
-  margin: auto 0;
 }

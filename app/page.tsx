@@ -2,12 +2,13 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Dashboard } from "./View/DashBoard";
+import { checklistProgress, propertyStatus, summarizeRequests } from "./properties/propertyHelpers";
 
-export default async function Home() {
+export default async function HomePage() {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/welcome");
   }
 
   if (user.role === "CARETAKER") {
@@ -18,42 +19,107 @@ export default async function Home() {
     where: {
       ownerId: user.id,
     },
+    orderBy: {
+      createdAt: "desc",
+    },
     select: {
       id: true,
-    },
-  });
-
-  const propertyIds = properties.map((property) => property.id);
-
-  const requests = await prisma.maintenanceRequest.findMany({
-    where: {
-      propertyId: {
-        in: propertyIds,
+      address: true,
+      city: true,
+      caretaker: {
+        select: {
+          name: true,
+        },
+      },
+      checklistItems: {
+        where: {
+          completed: true,
+        },
+        select: {
+          text: true,
+          completedAt: true,
+        },
+      },
+      maintenanceRequests: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          estimatedCost: true,
+          currency: true,
+          issuePhotoUrls: true,
+          createdAt: true,
+        },
       },
     },
-    select: {
-      status: true,
-    },
   });
 
-  const pendingApprovals = requests.filter(
-    (request) => request.status === "PENDING_APPROVAL"
-  ).length;
+  const allRequests = properties.flatMap((property) => property.maintenanceRequests);
+  const { awaiting, inProgress } = summarizeRequests(allRequests);
 
-  const activeMaintenance = requests.filter(
-    (request) => request.status === "IN_PROGRESS"
-  ).length;
+  // requests waiting for the owner, newest first (the card shows the first three)
+  const attention = properties
+    .flatMap((property) =>
+      property.maintenanceRequests
+        .filter((request) => request.status === "PENDING_APPROVAL")
+        .map((request) => ({
+          id: request.id,
+          title: request.title,
+          propertyId: property.id,
+          address: property.address,
+          createdAt: request.createdAt,
+          cost: request.estimatedCost
+            ? `${request.currency} ${Number(request.estimatedCost).toLocaleString("en-US")}`
+            : null,
+          photo: request.issuePhotoUrls[0] ?? null,
+        }))
+    )
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 3)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      propertyId: item.propertyId,
+      address: item.address,
+      cost: item.cost,
+      photo: item.photo,
+    }));
 
-  const totalProperties = properties.length;
-  const needAttention = pendingApprovals + activeMaintenance;
+  const checks = properties.map((property) => {
+    const checklist = checklistProgress(property.checklistItems);
+
+    return {
+      id: property.id,
+      address: property.address,
+      done: checklist.count,
+      total: checklist.total,
+    };
+  });
+
+  const cards = properties.slice(0, 3).map((property) => {
+    const summary = summarizeRequests(property.maintenanceRequests);
+    const status = propertyStatus(Boolean(property.caretaker), summary.awaiting, summary.inProgress);
+
+    return {
+      id: property.id,
+      address: property.address,
+      city: property.city,
+      statusLabel: status.label,
+      tone: status.tone,
+    };
+  });
 
   return (
     <Dashboard
-    totalProperties={totalProperties}
-    needAttention={needAttention}
-    pendingApprovals={pendingApprovals}
-    activeMaintenance={activeMaintenance}
-    userName={user.name}
-  />
+      userName={user.name}
+      firstName={user.name.trim().split(/\s+/)[0] || user.name}
+      totalProperties={properties.length}
+      unassigned={properties.filter((property) => !property.caretaker).length}
+      awaiting={awaiting}
+      inProgress={inProgress}
+      attention={attention}
+      checks={checks}
+      properties={cards}
+    />
   );
 }

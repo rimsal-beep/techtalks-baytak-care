@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { logout } from "../../actions/logout";
 import style from "../../Style/DashboardStyle.module.css";
+import BrandMark from "../BrandMark";
 
 type Props = {
   children: React.ReactNode;
@@ -47,7 +48,7 @@ export default function DashboardLayout({ children, activePage = "dashboard", us
       <div className={style.dashboardShell}>
         <aside className={style.sidebar}>
           <div className={style.sidebarBrand}>
-            <div className={style.sidebarLogo}>{icons.properties}</div>
+            <div className={style.sidebarLogo}><BrandMark /></div>
             <span>Baytak Care</span>
           </div>
 

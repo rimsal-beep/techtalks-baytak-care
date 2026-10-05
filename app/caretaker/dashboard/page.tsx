@@ -2,8 +2,8 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { logout } from "@/app/actions/logout";
 import Checklist from "./Checklist";
+import LogoutButton from "@/app/Components/LogoutButton";
 import style from "./CaretakerDashboard.module.css";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -49,21 +49,17 @@ export default async function CaretakerDashboardPage() {
             <span>Baytak Care</span>
           </div>
 
-          <form action={logout}>
-            <button type="submit" className={style.logoutButton}>
-              Log out
-            </button>
-          </form>
+          <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
         </header>
 
         <main className={style.main}>
           <div className={style.emptyState}>
             <h1 className={style.title}>
-              You haven't been assigned to a property yet
+              You have not  been assigned to a property yet
             </h1>
 
             <p className={style.muted}>
-              Once an owner invites you, it'll appear here.
+              Once an owner invites you, it will appear here.
             </p>
           </div>
         </main>
@@ -100,11 +96,7 @@ export default async function CaretakerDashboardPage() {
           <span>Baytak Care</span>
         </div>
 
-        <form action={logout}>
-          <button type="submit" className={style.logoutButton}>
-            Log out
-          </button>
-        </form>
+       <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
       </header>
 
       <main className={style.main}>

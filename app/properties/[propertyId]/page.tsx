@@ -1,4 +1,4 @@
-/* eslint-disable @next/next/no-img-element -- photos come from uploads / pasted links, so plain <img> is fine */
+                        /* eslint-disable @next/next/no-img-element -- photos come from uploads / pasted links, so plain <img> is fine */
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
@@ -392,7 +392,9 @@ export default async function PropertyDetailsPage({
             </section>
           </div>
 
-          <PropertyCaretakerInvite propertyId={property.id} />
+           {!property.caretaker && (
+            <PropertyCaretakerInvite propertyId={property.id} />
+          )}
         </>
       )}
 

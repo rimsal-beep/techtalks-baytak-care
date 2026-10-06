@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CHECKLIST_ITEMS } from "@/lib/checklistItems";
 import { completeChecklistItem } from "@/app/actions/maintenance";
 import style from "./CaretakerDashboard.module.css";
 
@@ -8,14 +9,6 @@ type ChecklistProps = {
   propertyId: string;
   initialCompletedItems: string[];
 };
-
-const CHECKLIST_ITEMS = [
-  "Check water and plumbing",
-  "Check electrical systems",
-  "Check doors and windows",
-  "Check air conditioning",
-  "Check general property condition",
-];
 
 export default function Checklist({
   propertyId,

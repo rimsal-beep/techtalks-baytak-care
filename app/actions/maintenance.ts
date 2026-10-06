@@ -133,28 +133,28 @@ export async function createMaintenanceRequest(
       };
     }
 
-  const maintenanceRequest = await prisma.maintenanceRequest.create({
-   data:{
-    title: input.title.trim(),
-    requestType: input.requestType.trim() as
-      | "PLUMBING"
-      | "ELECTRICAL"
-      | "HVAC"
-      | "STRUCTURAL"
-      | "APPLIANCE"
-      | "PAINTING"
-      | "CLEANING"
-      | "OTHER",
-    description: input.description?.trim() || null,
-    status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
-    estimatedCost,
-    currency: input.currency ?? "USD",
-    estimateNote: input.estimateNote?.trim() || null,
-    issuePhotoUrls,
-    reportedById: user.id,
-    propertyId: input.propertyId,
-  },
-});
+    const maintenanceRequest = await prisma.maintenanceRequest.create({
+      data: {
+        title: input.title.trim(),
+        requestType: input.requestType.trim() as
+          | "PLUMBING"
+          | "ELECTRICAL"
+          | "HVAC"
+          | "STRUCTURAL"
+          | "APPLIANCE"
+          | "PAINTING"
+          | "CLEANING"
+          | "OTHER",
+        description: input.description?.trim() || null,
+        status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
+        estimatedCost,
+        currency: input.currency ?? "USD",
+        estimateNote: input.estimateNote?.trim() || null,
+        issuePhotoUrls,
+        reportedById: user.id,
+        propertyId: input.propertyId,
+      },
+    });
 
     return {
       success: true,
@@ -352,7 +352,17 @@ export async function completeChecklistItem(
         },
       });
 
-      if (existingItem?.completed) {
+      const startOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      );
+
+      if (
+        existingItem?.completed &&
+        existingItem.completedAt &&
+        existingItem.completedAt >= startOfMonth
+      ) {
         throw new Error("CHECKLIST_ITEM_ALREADY_COMPLETED");
       }
 

@@ -1,13 +1,8 @@
 // Small shared helpers for the properties pages (list + detail).
 
-/** The fixed monthly checklist. Must match the wording used on the caretaker's checklist. */
-export const CHECKLIST_ITEMS = [
-  "Check water and plumbing",
-  "Check electrical systems",
-  "Check doors and windows",
-  "Check air conditioning",
-  "Check general property condition",
-];
+import { CHECKLIST_ITEMS } from "@/lib/checklistItems";
+
+export { CHECKLIST_ITEMS } from "@/lib/checklistItems";
 
 export type StatusTone = "good" | "warn" | "info" | "muted";
 

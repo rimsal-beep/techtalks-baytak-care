@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "../../lib/prisma";
 import { getCurrentUser } from "../../lib/session";
+import { isChecklistItemText } from "../../lib/checklistItems";
 
 type CreateMaintenanceRequestInput = {
   title: string;
@@ -297,10 +298,19 @@ export async function completeChecklistItem(
     };
   }
 
-  if (!input.text?.trim()) {
+  const checklistText = input.text?.trim();
+
+  if (!checklistText) {
     return {
       success: false,
       error: "Checklist item text is required.",
+    };
+  }
+
+  if (!isChecklistItemText(checklistText)) {
+    return {
+      success: false,
+      error: "Invalid checklist item.",
     };
   }
 
@@ -340,8 +350,6 @@ export async function completeChecklistItem(
       error: "You are not authorized for this property.",
     };
   }
-
-  const checklistText = input.text.trim();
 
   try {
     await prisma.$transaction(async (tx) => {

@@ -4,7 +4,10 @@ import { prisma } from "../../lib/prisma";
 import { verifyPassword } from "../../lib/auth";
 import { createSessionToken } from "../../lib/session";
 import { cookies } from "next/headers";
-import { checkRateLimit } from "../../lib/rateLimit";
+import {
+  checkRateLimit,
+  resetRateLimit,
+} from "../../lib/rateLimit";
 
 type LoginInput = {
   email: string;
@@ -40,6 +43,8 @@ export async function login(input: LoginInput) {
   if (!isValid) {
     return { success: false, error: "Invalid email or password." };
   }
+
+  resetRateLimit(email);
 
   const cookieStore = await cookies();
 

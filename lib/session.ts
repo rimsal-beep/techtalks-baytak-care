@@ -4,32 +4,41 @@ import { prisma } from "./prisma";
 
 const SESSION_COOKIE = "userId";
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
-function signUserId(userId: string) {
+function signSession(userId: string, expiresAt: number) {
   if (!SESSION_SECRET) {
     throw new Error("SESSION_SECRET is not configured.");
   }
 
   return createHmac("sha256", SESSION_SECRET)
-    .update(userId)
+    .update(`${userId}.${expiresAt}`)
     .digest("hex");
 }
 
 export function createSessionToken(userId: string) {
-  return `${userId}.${signUserId(userId)}`;
+  const expiresAt = Date.now() + SESSION_DURATION_MS;
+  const signature = signSession(userId, expiresAt);
+
+  return `${userId}.${expiresAt}.${signature}`;
 }
 
 function verifySessionToken(token: string) {
-  const separatorIndex = token.lastIndexOf(".");
+  const parts = token.split(".");
 
-  if (separatorIndex === -1) return null;
+  if (parts.length !== 3) return null;
 
-  const userId = token.slice(0, separatorIndex);
-  const signature = token.slice(separatorIndex + 1);
+  const [userId, expiresAtString, signature] = parts;
 
-  if (!userId || !signature) return null;
+  if (!userId || !expiresAtString || !signature) return null;
 
-  const expectedSignature = signUserId(userId);
+  const expiresAt = Number(expiresAtString);
+
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    return null;
+  }
+
+  const expectedSignature = signSession(userId, expiresAt);
 
   if (signature.length !== expectedSignature.length) return null;
 

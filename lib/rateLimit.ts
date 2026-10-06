@@ -56,3 +56,7 @@ export function checkRateLimit(key: string) {
 
   return { allowed: true };
 }
+
+export function resetRateLimit(key: string) {
+  attempts.delete(key);
+}

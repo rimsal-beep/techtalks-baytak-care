@@ -18,7 +18,10 @@ export default function Greeting({
   subtitle: string;
 }) {
   const [now, setNow] = useState<Date | null>(null);
-  useEffect(() => setNow(new Date()), []);
+  useEffect(() => {
+  const id = setTimeout(() => setNow(new Date()), 0);
+  return () => clearTimeout(id);
+}, []);
 
   const hour = now?.getHours() ?? 12;
   const hello = !now ? "Welcome" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";

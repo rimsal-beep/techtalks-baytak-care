@@ -48,6 +48,7 @@ Copy-Item .env.example .env
 ```
 
 The default configuration connects to the local PostgreSQL database provided by Docker.
+The `.env` file must also contain a `SESSION_SECRET` value used to sign session tokens. Generate a strong random secret for your local environment and keep it private. Do not commit the real secret to GitHub.
 
 ### 3. Start PostgreSQL
 

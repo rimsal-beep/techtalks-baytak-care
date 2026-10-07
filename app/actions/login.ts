@@ -2,7 +2,12 @@
 
 import { prisma } from "../../lib/prisma";
 import { verifyPassword } from "../../lib/auth";
+import { createSessionToken } from "../../lib/session";
 import { cookies } from "next/headers";
+import {
+  checkRateLimit,
+  resetRateLimit,
+} from "../../lib/rateLimit";
 
 type LoginInput = {
   email: string;
@@ -14,8 +19,19 @@ export async function login(input: LoginInput) {
     return { success: false, error: "Email and password are required." };
   }
 
+  const email = input.email.trim().toLowerCase();
+
+  const rateLimit = checkRateLimit(email);
+
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: "Too many login attempts. Please try again later.",
+    };
+  }
+
   const user = await prisma.user.findUnique({
-    where: { email: input.email.trim() },
+    where: { email },
   });
 
   if (!user) {
@@ -28,18 +44,22 @@ export async function login(input: LoginInput) {
     return { success: false, error: "Invalid email or password." };
   }
 
+  resetRateLimit(email);
+
   const cookieStore = await cookies();
-  cookieStore.set("userId", user.id, {
+
+  cookieStore.set("userId", createSessionToken(user.id), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    maxAge: 60 * 60 * 24 * 7,
   });
 
   const property = await prisma.property.findFirst({
-    where: user.role === "OWNER"
-      ? { ownerId: user.id }
-      : { caretakerId: user.id },
+    where:
+      user.role === "OWNER"
+        ? { ownerId: user.id }
+        : { caretakerId: user.id },
     select: { id: true },
   });
 
@@ -62,6 +82,3 @@ export async function login(input: LoginInput) {
     },
   };
 }
-
-
-

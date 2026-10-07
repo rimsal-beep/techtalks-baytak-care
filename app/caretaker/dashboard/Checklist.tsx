@@ -1,80 +1,121 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { completeChecklistItem } from "@/app/actions/maintenance";
-import style from "./CaretakerDashboard.module.css";
+import { CHECKLIST_ITEMS } from "@/lib/checklistItems";
+import styles from "./Caretaker.module.css";
+import { CHECKLIST_ICONS, Icon, Ring } from "./parts";
 
-type ChecklistProps = {
+type Done = { text: string; at: string | null }; // `at` is an ISO date string
+
+type Props = {
   propertyId: string;
-  initialCompletedItems: string[];
+  propertyName: string;
+  ownerFirst: string;
+  initialDone: Done[];
 };
 
-const CHECKLIST_ITEMS = [
-  "Check water and plumbing",
-  "Check electrical systems",
-  "Check doors and windows",
-  "Check air conditioning",
-  "Check general property condition",
-];
+const tick = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+);
 
-export default function Checklist({
-  propertyId,
-  initialCompletedItems,
-}: ChecklistProps) {
-  const [completedItems, setCompletedItems] =
-    useState<string[]>(initialCompletedItems);
-  const [loadingItem, setLoadingItem] = useState<string | null>(null);
+function when(iso: string | null) {
+  if (!iso) return "Done";
+  const d = new Date(iso);
+  return `Done · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+}
+
+export default function Checklist({ propertyId, propertyName, ownerFirst, initialDone }: Props) {
+  const router = useRouter();
+  const [done, setDone] = useState<Done[]>(initialDone);
+  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  const total = CHECKLIST_ITEMS.length;
+  const count = CHECKLIST_ITEMS.filter((t) => done.some((d) => d.text === t)).length;
+  const full = count === total;
+
   async function handleCheck(text: string) {
+    if (loading) return; // one tick at a time, so a double click does nothing
     setError("");
-    setLoadingItem(text);
-
-    const result = await completeChecklistItem({
-      propertyId,
-      text,
-    });
-
+    setLoading(text);
+    const result = await completeChecklistItem({ propertyId, text });
     if (result.success) {
-      setCompletedItems((current) => [...current, text]);
+      setDone((cur) => [...cur, { text, at: new Date().toISOString() }]);
+      router.refresh(); // updates the badges in the sidebar
     } else {
-      setError(result.error ?? "Failed to complete checklist item.");
+      setError(result.error ?? "Could not save this check. Please try again.");
     }
-
-    setLoadingItem(null);
+    setLoading(null);
   }
 
   return (
-    <div className={style.checklist}>
-      <h4 className={style.checklistTitle}>Property checklist</h4>
-
-      <div className={style.checklistItems}>
-        {CHECKLIST_ITEMS.map((text) => {
-          const completed = completedItems.includes(text);
-          const loading = loadingItem === text;
-
-          return (
-            <label key={text} className={style.checklistItem}>
-              <input
-                type="checkbox"
-                checked={completed}
-                disabled={completed || loading}
-                onChange={() => handleCheck(text)}
-              />
-
-              <span>{text}</span>
-
-              {loading && (
-                <small className={style.checklistLoading}>
-                  Saving...
-                </small>
-              )}
-            </label>
-          );
-        })}
+    <div className={styles.cl}>
+      <div className={styles.clTop}>
+        <Ring done={count} total={total} />
+        <div>
+          <span className={styles.mono}>{propertyName}</span>
+          <h3>{full ? "All done!" : `${count} of ${total} completed`}</h3>
+          <p>{full ? "Every check is complete this month. 🎉" : `${total - count} left`}</p>
+          <div className={`${styles.segs} ${full ? styles.segsFull : ""}`}>
+            {CHECKLIST_ITEMS.map((t) => (
+              <i key={t} className={done.some((d) => d.text === t) ? styles.segOn : ""} />
+            ))}
+          </div>
+        </div>
       </div>
 
-      {error && <p className={style.checklistError}>{error}</p>}
+      <ul className={styles.items}>
+        {CHECKLIST_ITEMS.map((text, i) => {
+          const entry = done.find((d) => d.text === text);
+          const isLoading = loading === text;
+          return (
+            <li key={text}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={!!entry}
+                className={`${styles.item} ${entry ? styles.ticked : ""}`}
+                disabled={!!entry || loading !== null}
+                onClick={() => handleCheck(text)}
+              >
+                <span className={styles.cb}>{isLoading ? <span className={styles.spin} /> : tick}</span>
+                <span className={styles.ci}>
+                  <Icon name={CHECKLIST_ICONS[i] ?? "eye"} />
+                </span>
+                <span className={styles.lab}>
+                  {text}
+                  <small>{entry ? when(entry.at) : "Not checked yet"}</small>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {error && (
+        <p className={styles.err} role="alert">
+          {error}
+        </p>
+      )}
+
+      {full && (
+        <div className={styles.clDone}>
+          <h3>Checklist complete</h3>
+          <p>Nice work. Found a problem? Report it so {ownerFirst} can approve the fix.</p>
+          <Link
+            href={`/requests/new?propertyId=${encodeURIComponent(propertyId)}`}
+            className={styles.btn}
+          >
+            <Icon name="plus" />
+            Report an issue
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

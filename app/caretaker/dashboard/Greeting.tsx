@@ -19,9 +19,9 @@ export default function Greeting({
 }) {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
-  const id = setTimeout(() => setNow(new Date()), 0);
-  return () => clearTimeout(id);
-}, []);
+    const id = setTimeout(() => setNow(new Date()), 0);
+    return () => clearTimeout(id);
+  }, []);
 
   const hour = now?.getHours() ?? 12;
   const hello = !now ? "Welcome" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
@@ -32,7 +32,16 @@ export default function Greeting({
   return (
     <div>
       <span className={styles.mono}>{date}</span>
-      <h1>{title ?? `${hello}, ${firstName}`}</h1>
+      <h1>
+        {title ?? (
+          <>
+            {hello}, {firstName}{" "}
+            <span className={styles.wave} aria-hidden="true">
+              👋
+            </span>
+          </>
+        )}
+      </h1>
       <p>{subtitle}</p>
     </div>
   );

@@ -25,6 +25,13 @@ function isActive(pathname: string, href: string) {
   return href === BASE ? pathname === BASE : pathname.startsWith(href);
 }
 
+/** Lets the glow in the menu follow the mouse. */
+function follow(e: React.MouseEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+}
+
 export function SideNav({ badges, propertyIds }: { badges: Badges; propertyIds: string[] }) {
   const pathname = usePathname();
   const withProperty = useWithProperty(propertyIds);
@@ -36,6 +43,7 @@ export function SideNav({ badges, propertyIds }: { badges: Badges; propertyIds: 
           <Link
             key={it.href}
             href={withProperty(it.href)}
+            onMouseMove={follow}
             className={`${styles.navLink} ${isActive(pathname, it.href) ? styles.navOn : ""}`}
             aria-current={isActive(pathname, it.href) ? "page" : undefined}
           >

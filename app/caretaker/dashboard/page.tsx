@@ -1,213 +1,125 @@
-import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import Checklist from "./Checklist";
-import LogoutButton from "@/app/Components/LogoutButton";
-import style from "./CaretakerDashboard.module.css";
+import styles from "./Caretaker.module.css";
+import PageHead from "./PageHead";
+import NoProperty from "./NoProperty";
+import { EmptyState, Icon, Logo, Ring, RequestRow, reportHref, rise } from "./parts";
+import { getCaretakerData, monthProgress, pickProperty } from "./data";
+import { CHECKLIST_ITEMS } from "@/lib/checklistItems";
 
-const STATUS_LABEL: Record<string, string> = {
-  REPORTED: "Reported",
-  PENDING_APPROVAL: "Pending approval",
-  APPROVED: "Approved",
-  REJECTED: "Rejected",
-  IN_PROGRESS: "In progress",
-  COMPLETED: "Completed",
-};
+export default async function CaretakerOverview({
+  searchParams,
+}: {
+  searchParams: Promise<{ property?: string }>;
+}) {
+  const { user, properties, requests } = await getCaretakerData();
+  const property = pickProperty(properties, (await searchParams).property);
+  if (!property) return <NoProperty />;
 
-export default async function CaretakerDashboardPage() {
-  const user = await getCurrentUser();
+  const ownerName = property.owner?.name ?? "the owner";
+  const ownerFirst = ownerName.split(" ")[0];
+  const firstName = user.name.split(" ")[0];
 
-  if (!user) {
-    redirect("/login");
-  }
+  const { done, total, doneAt } = monthProgress(property, CHECKLIST_ITEMS);
+  const full = done === total;
+  const next = CHECKLIST_ITEMS.find((t) => !doneAt.has(t));
+  const left = total - done;
 
-  if (user.role !== "CARETAKER") {
-    redirect("/");
-  }
-
-  const properties = await prisma.property.findMany({
-    where: {
-      caretakerId: user.id,
-    },
-    select: {
-      id: true,
-      address: true,
-      city: true,
-      checklistItems: {
-        where: {
-          completed: true,
-          completedAt: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-          },
-        },
-        select: { text: true },
-      },
-    },
-  });
-  if (properties.length === 0) {
-    return (
-      <div className={style.page}>
-        <header className={style.header}>
-          <div className={style.brand}>
-            <div className={style.logo}>B</div>
-            <span>Baytak Care</span>
-          </div>
-
-          <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
-        </header>
-
-        <main className={style.main}>
-          <div className={style.emptyState}>
-            <h1 className={style.title}>
-              You have not  been assigned to a property yet
-            </h1>
-
-            <p className={style.muted}>
-              Once an owner invites you, it will appear here.
-            </p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  const propertyIds = properties.map((property) => property.id);
-
-  const requests = await prisma.maintenanceRequest.findMany({
-    where: {
-      propertyId: {
-        in: propertyIds,
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 10,
-    include: {
-      property: {
-        select: {
-          address: true,
-        },
-      },
-    },
-  });
+  const mine = requests.filter((r) => r.propertyId === property.id);
+  const waiting = mine.filter((r) => r.status === "PENDING_APPROVAL").length;
+  const completed = mine.filter((r) => r.status === "COMPLETED").length;
+  const q = (extra: string) => `/caretaker/dashboard/requests?property=${property.id}${extra}`;
 
   return (
-    <div className={style.page}>
-      <header className={style.header}>
-        <div className={style.brand}>
-          <div className={style.logo}>B</div>
-          <span>Baytak Care</span>
-        </div>
+    <>
+      <PageHead
+        firstName={firstName}
+        subtitle="Here’s your property today."
+        properties={properties}
+        currentId={property.id}
+      />
 
-        <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
-      </header>
+      <div className={`${styles.prow} ${styles.rise}`} style={rise(1)}>
+        <span className={styles.pimg}>
+          <Logo />
+        </span>
+        <span className={styles.pmain}>
+          <span className={styles.mono}>Your property</span>
+          <b>{property.address}</b>
+          <span className={styles.ploc}>
+            <Icon name="pin" />
+            {property.city ? `${property.city} · ` : ""}Owner {ownerName}
+          </span>
+        </span>
+      </div>
 
-      <main className={style.main}>
-        <h1 className={style.title}>Your properties</h1>
-
-        <div className={style.propertyGrid}>
-          {properties.map((property) => (
-            <div key={property.id} className={style.propertyCard}>
-              <h3>{property.address}</h3>
-
-              {property.city && (
-                <p className={style.city}>{property.city}</p>
-              )}
-
-              <Checklist
-                propertyId={property.id}
-                initialCompletedItems={property.checklistItems.map((item) => item.text)}
-              />
-
-              <Link
-                href={`/requests/new?propertyId=${property.id}`}
-                className={style.reportButton}
-              >
-                Report an issue
-              </Link>
+      <section className={`${styles.today} ${styles.rise}`} style={rise(2)}>
+        <Link href={`/caretaker/dashboard/checklist?property=${property.id}`} className={styles.tcard}>
+          <div className={styles.tcTop}>
+            <Ring done={done} total={total} />
+            <div>
+              <span className={styles.mono}>Monthly checklist</span>
+              <h3>{full ? "All checks done 🎉" : `${left} check${left === 1 ? "" : "s"} left`}</h3>
+              <p>
+                {full
+                  ? "Everything at this property has been checked this month."
+                  : `Next: ${next?.replace("Check ", "")}`}
+              </p>
             </div>
-          ))}
+          </div>
+          <span className={styles.tcGo}>
+            {full ? "View checklist" : "Continue checklist"}
+            <Icon name="arrow" />
+          </span>
+        </Link>
+
+        <div className={styles.rcard}>
+          <span className={styles.rcardIcon}>
+            <Icon name="alert" />
+          </span>
+          <h3>Something wrong at the property?</h3>
+          <p>Report it with a photo and an estimated cost. {ownerFirst} will approve it.</p>
+          <Link href={reportHref(property.id)} className={`${styles.btn} ${styles.btnLight} ${styles.btnLg}`}>
+            <Icon name="plus" />
+            Report an issue
+          </Link>
+        </div>
+      </section>
+
+      <section className={`${styles.sec} ${styles.rise}`} style={rise(3)}>
+        <div className={styles.secH}>
+          <div>
+            <h2>Your requests</h2>
+            <p className={styles.sub}>Issues you reported and what the owner decided.</p>
+          </div>
+          <Link href={q("")} className={styles.more}>
+            All requests
+            <Icon name="arrow" />
+          </Link>
         </div>
 
-        <div className={style.statsRow}>
-          <div className={style.statCard}>
-            <strong>{requests.length}</strong>
+        <div className={styles.counts}>
+          <Link href={q("")} className={styles.cnt}>
+            <b>{mine.length}</b>
             <span>Total requests</span>
-          </div>
-
-          <div className={style.statCard}>
-            <strong>
-              {
-                requests.filter(
-                  (request) => request.status === "PENDING_APPROVAL"
-                ).length
-              }
-            </strong>
+          </Link>
+          <Link href={q("&status=waiting")} className={`${styles.cnt} ${waiting ? styles.cntHot : ""}`}>
+            <b>{waiting}</b>
             <span>Awaiting approval</span>
-          </div>
-
-          <div className={style.statCard}>
-            <strong>
-              {
-                requests.filter(
-                  (request) => request.status === "COMPLETED"
-                ).length
-              }
-            </strong>
+          </Link>
+          <Link href={q("&status=completed")} className={styles.cnt}>
+            <b>{completed}</b>
             <span>Completed</span>
-          </div>
+          </Link>
         </div>
 
-        <h2 className={style.sectionTitle}>Your requests</h2>
-
-        {requests.length === 0 ? (
-          <p className={style.muted}>No requests submitted yet.</p>
-        ) : (
-          <div className={style.requestList}>
-            {requests.map((request) => (
-              <Link
-                key={request.id}
-                href={`/requests/${request.id}`}
-                className={style.requestRow}
-              >
-                <div className={style.requestContent}>
-                  <p className={style.requestTitle}>
-                    {request.title}
-                  </p>
-
-                  <p className={style.requestMeta}>
-                    {properties.length > 1
-                      ? request.property.address
-                      : new Date(request.createdAt).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "short",
-                          day: "numeric",
-                        }
-                      )}
-                  </p>
-
-                  {request.status === "REJECTED" && (
-                    <p className={style.rejectionReason}>
-                      <strong>Rejection reason: </strong>
-                      {request.rejectionReason?.trim() || "No rejection reason recorded."}
-                    </p>
-                  )}
-                </div>
-
-                <span
-                  className={`${style.statusPill} ${style[`status_${request.status}`]
-                    }`}
-                >
-                  {STATUS_LABEL[request.status] ?? request.status}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
+        <div className={styles.rlist}>
+          {mine.length ? (
+            mine.slice(0, 3).map((r, i) => <RequestRow key={r.id} request={r} index={i} showAddress={false} />)
+          ) : (
+            <EmptyState title="No requests yet" text="When you report an issue, it will appear here." />
+          )}
+        </div>
+      </section>
+    </>
   );
 }

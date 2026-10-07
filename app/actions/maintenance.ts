@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "../../lib/prisma";
 import { getCurrentUser } from "../../lib/session";
+import { isChecklistItemText } from "../../lib/checklistItems";
 
 type CreateMaintenanceRequestInput = {
   title: string;
@@ -133,28 +134,28 @@ export async function createMaintenanceRequest(
       };
     }
 
-  const maintenanceRequest = await prisma.maintenanceRequest.create({
-   data:{
-    title: input.title.trim(),
-    requestType: input.requestType.trim() as
-      | "PLUMBING"
-      | "ELECTRICAL"
-      | "HVAC"
-      | "STRUCTURAL"
-      | "APPLIANCE"
-      | "PAINTING"
-      | "CLEANING"
-      | "OTHER",
-    description: input.description?.trim() || null,
-    status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
-    estimatedCost,
-    currency: input.currency ?? "USD",
-    estimateNote: input.estimateNote?.trim() || null,
-    issuePhotoUrls,
-    reportedById: user.id,
-    propertyId: input.propertyId,
-  },
-});
+    const maintenanceRequest = await prisma.maintenanceRequest.create({
+      data: {
+        title: input.title.trim(),
+        requestType: input.requestType.trim() as
+          | "PLUMBING"
+          | "ELECTRICAL"
+          | "HVAC"
+          | "STRUCTURAL"
+          | "APPLIANCE"
+          | "PAINTING"
+          | "CLEANING"
+          | "OTHER",
+        description: input.description?.trim() || null,
+        status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
+        estimatedCost,
+        currency: input.currency ?? "USD",
+        estimateNote: input.estimateNote?.trim() || null,
+        issuePhotoUrls,
+        reportedById: user.id,
+        propertyId: input.propertyId,
+      },
+    });
 
     return {
       success: true,
@@ -297,10 +298,19 @@ export async function completeChecklistItem(
     };
   }
 
-  if (!input.text?.trim()) {
+  const checklistText = input.text?.trim();
+
+  if (!checklistText) {
     return {
       success: false,
       error: "Checklist item text is required.",
+    };
+  }
+
+  if (!isChecklistItemText(checklistText)) {
+    return {
+      success: false,
+      error: "Invalid checklist item.",
     };
   }
 
@@ -341,8 +351,6 @@ export async function completeChecklistItem(
     };
   }
 
-  const checklistText = input.text.trim();
-
   try {
     await prisma.$transaction(async (tx) => {
       const existingItem = await tx.checklistItem.findFirst({
@@ -352,7 +360,17 @@ export async function completeChecklistItem(
         },
       });
 
-      if (existingItem?.completed) {
+      const startOfMonth = new Date(
+        new Date().getFullYear(),
+        new Date().getMonth(),
+        1
+      );
+
+      if (
+        existingItem?.completed &&
+        existingItem.completedAt &&
+        existingItem.completedAt >= startOfMonth
+      ) {
         throw new Error("CHECKLIST_ITEM_ALREADY_COMPLETED");
       }
 
@@ -382,6 +400,7 @@ export async function completeChecklistItem(
           action: `Checklist completed: ${checklistText}`,
           performedById: user.id,
           maintenanceRequestId: null,
+          propertyId: input.propertyId,
         },
       });
     });

@@ -165,9 +165,16 @@ export default async function PropertyDetailsPage({
 
   const activityLogs = await prisma.activityLog.findMany({
     where: {
-      maintenanceRequest: {
-        propertyId: property.id,
-      },
+      OR: [
+        {
+          maintenanceRequest: {
+            propertyId: property.id,
+          },
+        },
+        {
+          propertyId: property.id,
+        },
+      ],
     },
     include: {
       performedBy: {
@@ -560,7 +567,10 @@ export default async function PropertyDetailsPage({
                   <div className={s.logBody}>
                     <p className={s.logAction}>{log.action}</p>
 
-                    <p className={s.logRequest}>{log.maintenanceRequest?.title || "Activity"}</p>
+                    <p className={s.logRequest}>
+                      {log.maintenanceRequest?.title ??
+                        (log.propertyId ? "Property checklist" : "Activity")}
+                    </p>
 
                     <p className={s.logMeta}>
                       {log.performedBy.name} ·{" "}
@@ -661,6 +671,15 @@ export default async function PropertyDetailsPage({
                     </div>
                   )}
                 </dl>
+
+                {selected.status === "REJECTED" && (
+                  <div className={s.panelBlock}>
+                    <h4 className={s.panelHeading}>Rejection reason</h4>
+                    <p className={s.rejectionReason}>
+                      {selected.rejectionReason?.trim() || "No rejection reason recorded."}
+                    </p>
+                  </div>
+                )}
 
                 <ol className={s.steps}>
                   {STEPS.map((label, index) => {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { logout } from "../../actions/logout";
 import style from "../../Style/DashboardStyle.module.css";
 import BrandMark from "../BrandMark";
+import LogoutButton from "../LogoutButton";
 
 type Props = {
   children: React.ReactNode;
@@ -85,12 +86,10 @@ export default function DashboardLayout({ children, activePage = "dashboard", us
                 <span className={style.sidebarUserName}>{userName}</span>
               </div>
             )}
-            <form action={logout}>
-              <button type="submit" className={style.logoutBtn}>
-                {icons.logout}
-                Log out
-              </button>
-            </form>
+            <LogoutButton className={style.logoutBtn}>
+  {icons.logout}
+  Log out
+</LogoutButton>
           </div>
         </aside>
 

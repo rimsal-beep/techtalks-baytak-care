@@ -36,6 +36,43 @@ const ICONS = {
       <circle cx="12" cy="12" r="3" />
     </>
   ),
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  arrowL: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  arrowD: <path d="M12 5v14M6 13l6 6 6-6" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </>
+  ),
+  cal: <path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4" />,
+  tag: (
+    <>
+      <path d="M3.5 12.5V4h8.5l8.5 8.5-8 8z" />
+      <circle cx="8" cy="8.5" r="1.4" />
+    </>
+  ),
+  link: <path d="M10 14a4 4 0 0 0 5.7 0l3.3-3.3a4 4 0 0 0-5.7-5.7L12 6.3M14 10a4 4 0 0 0-5.7 0L5 13.3A4 4 0 0 0 10.7 19L12 17.7" />,
+  file: <path d="M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5" />,
+  camera: (
+    <>
+      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
+  image: (
+    <>
+      <rect x="3.5" y="5" width="17" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.8" />
+      <path d="M20.5 16l-5-5-8 8" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof ICONS;
@@ -145,7 +182,7 @@ export function RequestRow({
 
   return (
     <Link
-      href={`/requests/${request.id}`}
+      href={`/caretaker/dashboard/requests/${request.id}`}
       className={`${styles.rq} ${styles.rise}`}
       style={{ "--i": index + 1 } as CSSProperties}
     >

@@ -27,19 +27,24 @@ export default async function CaretakerDashboardPage() {
   }
 
   const properties = await prisma.property.findMany({
-  where: {
-    caretakerId: user.id,
-  },
-  select: {
-    id: true,
-    address: true,
-    city: true,
-    checklistItems: {
-      where: { completed: true },
-      select: { text: true },
+    where: {
+      caretakerId: user.id,
     },
-  },
-});
+    select: {
+      id: true,
+      address: true,
+      city: true,
+      checklistItems: {
+        where: {
+          completed: true,
+          completedAt: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+        select: { text: true },
+      },
+    },
+  });
   if (properties.length === 0) {
     return (
       <div className={style.page}>
@@ -96,7 +101,7 @@ export default async function CaretakerDashboardPage() {
           <span>Baytak Care</span>
         </div>
 
-       <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
+        <LogoutButton className={style.logoutButton}>Log out</LogoutButton>
       </header>
 
       <main className={style.main}>
@@ -107,21 +112,21 @@ export default async function CaretakerDashboardPage() {
             <div key={property.id} className={style.propertyCard}>
               <h3>{property.address}</h3>
 
-             {property.city && (
-  <p className={style.city}>{property.city}</p>
-)}
+              {property.city && (
+                <p className={style.city}>{property.city}</p>
+              )}
 
-<Checklist
-  propertyId={property.id}
-  initialCompletedItems={property.checklistItems.map((item) => item.text)}
-/>
+              <Checklist
+                propertyId={property.id}
+                initialCompletedItems={property.checklistItems.map((item) => item.text)}
+              />
 
-<Link
-  href={`/requests/new?propertyId=${property.id}`}
-  className={style.reportButton}
->
-  Report an issue
-</Link>
+              <Link
+                href={`/requests/new?propertyId=${property.id}`}
+                className={style.reportButton}
+              >
+                Report an issue
+              </Link>
             </div>
           ))}
         </div>
@@ -176,12 +181,12 @@ export default async function CaretakerDashboardPage() {
                     {properties.length > 1
                       ? request.property.address
                       : new Date(request.createdAt).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                          }
-                        )}
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                        }
+                      )}
                   </p>
 
                   {request.status === "REJECTED" && (
@@ -193,9 +198,8 @@ export default async function CaretakerDashboardPage() {
                 </div>
 
                 <span
-                  className={`${style.statusPill} ${
-                    style[`status_${request.status}`]
-                  }`}
+                  className={`${style.statusPill} ${style[`status_${request.status}`]
+                    }`}
                 >
                   {STATUS_LABEL[request.status] ?? request.status}
                 </span>

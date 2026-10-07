@@ -17,11 +17,20 @@ export default async function ActivityPage() {
 
   const activityLogs = await prisma.activityLog.findMany({
     where: {
-      maintenanceRequest: {
-        property: {
-          ownerId: user.id,
+      OR: [
+        {
+          maintenanceRequest: {
+            property: {
+              ownerId: user.id,
+            },
+          },
         },
-      },
+        {
+          property: {
+            ownerId: user.id,
+          },
+        },
+      ],
     },
     include: {
       performedBy: {
@@ -37,6 +46,11 @@ export default async function ActivityPage() {
               address: true,
             },
           },
+        },
+      },
+      property: {
+        select: {
+          address: true,
         },
       },
     },
@@ -87,7 +101,8 @@ export default async function ActivityPage() {
                   color: "#555",
                 }}
               >
-                {log.maintenanceRequest?.property.address ??
+                {log.property?.address ??
+                  log.maintenanceRequest?.property.address ??
                   "Property activity"}
               </p>
 
@@ -98,7 +113,8 @@ export default async function ActivityPage() {
                   fontSize: "14px",
                 }}
               >
-                {log.maintenanceRequest?.title ?? "Activity"} ·{" "}
+                {log.maintenanceRequest?.title ??
+                  (log.propertyId ? "Property checklist" : "Activity")} ·{" "}
                 {log.performedBy.name} ·{" "}
                 {new Date(log.createdAt).toLocaleString("en-US", {
                   month: "short",

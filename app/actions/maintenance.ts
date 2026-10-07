@@ -390,6 +390,7 @@ export async function completeChecklistItem(
           action: `Checklist completed: ${checklistText}`,
           performedById: user.id,
           maintenanceRequestId: null,
+          propertyId: input.propertyId,
         },
       });
     });

@@ -50,6 +50,7 @@ model Property {
   maintenanceRequests MaintenanceRequest[]
   invitations         Invitation[]
   checklistItems      ChecklistItem[]
+  activityLogs        ActivityLog[]
 
   @@index([ownerId])
   @@index([caretakerId])
@@ -167,7 +168,12 @@ model ActivityLog {
 
   maintenanceRequestId String?
   maintenanceRequest     MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id])
+
   @@index([maintenanceRequestId])
+  @@index([propertyId])
 }
 
 model ChecklistItem {

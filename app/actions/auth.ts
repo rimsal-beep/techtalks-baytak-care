@@ -2,7 +2,7 @@
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
-import { getCurrentUser } from "../../lib/session";
+import { createSessionToken, getCurrentUser } from "../../lib/session";
 import { cookies } from "next/headers";
 
 type SignupInput = {
@@ -111,7 +111,11 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
             })
           ),
           prisma.invitation.updateMany({
-            where: { id: { in: invitations.map((invitation) => invitation.id) } },
+            where: {
+              id: {
+                in: invitations.map((invitation) => invitation.id),
+              },
+            },
             data: { status: "ACCEPTED" },
           }),
         ]);
@@ -120,7 +124,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
 
     const cookieStore = await cookies();
 
-    cookieStore.set("userId", user.id, {
+    cookieStore.set("userId", createSessionToken(user.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

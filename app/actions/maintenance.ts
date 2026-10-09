@@ -78,6 +78,7 @@ export async function createMaintenanceRequest(
 
   try {
     const estimatedCost = input.estimatedCost ?? null;
+
     const issuePhotos = (input.issuePhotos ?? []).filter(
       (photo) => photo.size > 0
     );
@@ -106,8 +107,14 @@ export async function createMaintenanceRequest(
     }
 
     const issuePhotoUrls: string[] = [];
+
     if (issuePhotos.length > 0) {
-      const uploadDirectory = path.join(process.cwd(), "public", "uploads");
+      const uploadDirectory = path.join(
+        process.cwd(),
+        "public",
+        "uploads"
+      );
+
       await mkdir(uploadDirectory, { recursive: true });
 
       for (const photo of issuePhotos) {
@@ -115,11 +122,14 @@ export async function createMaintenanceRequest(
           /[^a-z0-9]/gi,
           ""
         );
+
         const fileName = `${randomUUID()}.${extension}`;
+
         await writeFile(
           path.join(uploadDirectory, fileName),
           Buffer.from(await photo.arrayBuffer())
         );
+
         issuePhotoUrls.push(`/uploads/${fileName}`);
       }
     }
@@ -134,34 +144,41 @@ export async function createMaintenanceRequest(
       };
     }
 
-    const maintenanceRequest = await prisma.maintenanceRequest.create({
-      data: {
-        title: input.title.trim(),
-        requestType: input.requestType.trim() as
-          | "PLUMBING"
-          | "ELECTRICAL"
-          | "HVAC"
-          | "STRUCTURAL"
-          | "APPLIANCE"
-          | "PAINTING"
-          | "CLEANING"
-          | "OTHER",
-        description: input.description?.trim() || null,
-        status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
-        estimatedCost,
-        currency: input.currency ?? "USD",
-        estimateNote: input.estimateNote?.trim() || null,
-        issuePhotoUrls,
-        reportedById: user.id,
-        propertyId: input.propertyId,
-      },
-    });
+    const maintenanceRequest =
+      await prisma.maintenanceRequest.create({
+        data: {
+          title: input.title.trim(),
+          requestType: input.requestType.trim() as
+            | "PLUMBING"
+            | "ELECTRICAL"
+            | "HVAC"
+            | "STRUCTURAL"
+            | "APPLIANCE"
+            | "PAINTING"
+            | "CLEANING"
+            | "OTHER",
+          description: input.description?.trim() || null,
+          status:
+            estimatedCost !== null
+              ? "PENDING_APPROVAL"
+              : "REPORTED",
+          estimatedCost,
+          currency: input.currency ?? "USD",
+          estimateNote: input.estimateNote?.trim() || null,
+          issuePhotoUrls,
+          reportedById: user.id,
+          propertyId: input.propertyId,
+        },
+      });
 
     return {
       success: true,
     };
   } catch (error) {
-    console.error("Failed to create maintenance request:", error);
+    console.error(
+      "Failed to create maintenance request:",
+      error
+    );
 
     return {
       success: false,
@@ -222,10 +239,10 @@ export async function completeMaintenanceRequest(
     };
   }
 
-  if (request.status !== "APPROVED") {
+  if (request.status !== "IN_PROGRESS") {
     return {
       success: false,
-      error: "Only approved requests can be marked as completed.",
+      error: "Only in-progress requests can be marked as completed.",
     };
   }
 
@@ -239,9 +256,11 @@ export async function completeMaintenanceRequest(
   const beforePhotoUrls = (input.beforePhotoUrls ?? [])
     .map((url) => url.trim())
     .filter(Boolean);
+
   const afterPhotoUrls = (input.afterPhotoUrls ?? [])
     .map((url) => url.trim())
     .filter(Boolean);
+
   const receiptUrl = input.receiptUrl?.trim();
 
   try {
@@ -261,20 +280,22 @@ export async function completeMaintenanceRequest(
       await tx.activityLog.create({
         data: {
           action: "Request completed",
-          previousStatus: request.status,
+          previousStatus: "IN_PROGRESS",
           newStatus: "COMPLETED",
           performedById: user.id,
           maintenanceRequestId: request.id,
         },
       });
-
     });
 
     return {
       success: true,
     };
   } catch (error) {
-    console.error("Failed to complete maintenance request:", error);
+    console.error(
+      "Failed to complete maintenance request:",
+      error
+    );
 
     return {
       success: false,
@@ -419,7 +440,10 @@ export async function completeChecklistItem(
       };
     }
 
-    console.error("Failed to complete checklist item:", error);
+    console.error(
+      "Failed to complete checklist item:",
+      error
+    );
 
     return {
       success: false,

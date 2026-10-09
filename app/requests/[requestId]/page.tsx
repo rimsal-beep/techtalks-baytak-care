@@ -227,9 +227,9 @@ export default async function RequestDetailPage({
         )}
 
         {request.property.caretakerId === user.id &&
-          request.status === "APPROVED" && (
-           <CompletionForm requestId={request.id} />
-      )}
+          request.status === "IN_PROGRESS" && (
+            <CompletionForm requestId={request.id} />
+          )}
 
       </main>
     </div>

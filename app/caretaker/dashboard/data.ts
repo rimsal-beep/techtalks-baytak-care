@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { safeUrl } from "@/lib/safeUrl";
 
 /**
  * Everything the caretaker pages need, loaded once per request.
@@ -33,6 +34,7 @@ export const getCaretakerData = cache(async () => {
   const requests = await prisma.maintenanceRequest.findMany({
     where: { reportedById: user.id, property: { caretakerId: user.id } },
     orderBy: { createdAt: "desc" },
+    take: 200,
     select: {
       id: true,
       title: true,
@@ -47,10 +49,13 @@ export const getCaretakerData = cache(async () => {
     },
   });
 
-  return {
+   return {
     user: { name: user.name ?? "Caretaker" },
     properties,
-    requests,
+    requests: requests.map((request) => ({
+      ...request,
+      issuePhotoUrls: request.issuePhotoUrls.map(safeUrl).filter(Boolean),
+    })),
   };
 });
 

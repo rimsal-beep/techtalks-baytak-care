@@ -14,7 +14,8 @@ export default async function PropertyCaretakerPage({
     redirect("/login");
   }
 
-  if (user.role === "CARETAKER") {
+
+    if (user.role !== "OWNER") {
     redirect("/caretaker/dashboard");
   }
 
@@ -36,9 +37,11 @@ export default async function PropertyCaretakerPage({
     notFound();
   }
 
-  const requests = await prisma.maintenanceRequest.findMany({
+   const requests = await prisma.maintenanceRequest.findMany({
     where: { propertyId: property.id },
     orderBy: { createdAt: "desc" },
+    take: 200,
+    select: { id: true, title: true, status: true, createdAt: true },
   });
 
   return (

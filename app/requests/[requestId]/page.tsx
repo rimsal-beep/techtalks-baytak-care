@@ -1,9 +1,10 @@
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { requestScope } from "@/lib/authz";
+import { safeUrl } from "@/lib/safeUrl";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import ApprovalActions from "./ApprovalActions";
-import CompletionForm from "./CompletionForm";
 import style from "@/app/Style/DashboardStyle.module.css";
 import detailStyle from "./RequestDetail.module.css";
 
@@ -29,8 +30,15 @@ export default async function RequestDetailPage({
 
   const { requestId } = await params;
 
-  const request = await prisma.maintenanceRequest.findUnique({
-    where: { id: requestId },
+  // Owners use this page. Caretakers use their own page.
+  if (user.role !== "OWNER") {
+    redirect(`/caretaker/dashboard/requests/${encodeURIComponent(requestId)}`);
+  }
+
+  // The owner check is inside the query: someone else's request
+  // and a missing request both give the same "not found".
+  const found = await prisma.maintenanceRequest.findFirst({
+    where: { id: requestId, ...requestScope(user) },
     include: {
       reportedBy: {
         select: {
@@ -41,24 +49,22 @@ export default async function RequestDetailPage({
         select: {
           id: true,
           address: true,
-          ownerId: true,
-          caretakerId: true,
         },
       },
     },
   });
 
-  if (!request) {
+  if (!found) {
     notFound();
   }
 
-  const isAuthorized =
-    request.property.ownerId === user.id ||
-    request.property.caretakerId === user.id;
-
-  if (!isAuthorized) {
-    redirect("/");
-  }
+  const request = {
+    ...found,
+    issuePhotoUrls: found.issuePhotoUrls.map(safeUrl).filter(Boolean),
+    beforePhotoUrls: found.beforePhotoUrls.map(safeUrl).filter(Boolean),
+    afterPhotoUrls: found.afterPhotoUrls.map(safeUrl).filter(Boolean),
+    receiptUrl: found.receiptUrl ? safeUrl(found.receiptUrl) || null : null,
+  };
 
   return (
     <div className={style.dashboardShell}>
@@ -78,10 +84,9 @@ export default async function RequestDetailPage({
           </span>
         </div>
 
-        {request.status === "PENDING_APPROVAL" &&
-          request.property.ownerId === user.id && (
-            <ApprovalActions requestId={request.id} />
-          )}
+                       {request.status === "PENDING_APPROVAL" && (
+          <ApprovalActions requestId={request.id} />
+        )}
 
         {request.status === "REJECTED" && (
           <section className={detailStyle.section}>
@@ -226,10 +231,7 @@ export default async function RequestDetailPage({
           </section>
         )}
 
-        {request.property.caretakerId === user.id &&
-          request.status === "APPROVED" && (
-           <CompletionForm requestId={request.id} />
-      )}
+      
 
       </main>
     </div>

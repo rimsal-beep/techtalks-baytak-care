@@ -32,7 +32,9 @@ export default async function PropertiesPage() {
   if (user.role === "CARETAKER") {
     redirect("/caretaker/dashboard");
   }
-
+  if (user.role !== "OWNER") {
+    redirect("/caretaker/dashboard");
+  }
   const properties = await prisma.property.findMany({
     where: {
       ownerId: user.id,
@@ -40,6 +42,7 @@ export default async function PropertiesPage() {
     orderBy: {
       createdAt: "desc",
     },
+    take: 100,
     select: {
       id: true,
       address: true,

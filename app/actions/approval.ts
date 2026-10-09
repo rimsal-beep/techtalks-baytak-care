@@ -1,83 +1,72 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { requireRequestAccess } from "@/lib/authz";
 import { REJECTION_REASON_MAX_LENGTH } from "@/lib/rejectionReason";
 
 export async function approveRequest(requestId: string) {
-  const user = await getCurrentUser();
+  // logged in + OWNER + the request belongs to one of this owner's properties
+  const a = await requireRequestAccess(requestId, "OWNER");
+  if (!a.ok) return { success: false, error: a.error };
+  const { user, request } = a;
 
-  if (!user) {
-    return { success: false, error: "You must be logged in." };
+  if (request.status !== "PENDING_APPROVAL") {
+    return { success: false, error: "Only requests waiting for approval can be approved." };
   }
 
-  if (user.role !== "OWNER") {
-    return { success: false, error: "Only property owners can approve requests." };
-  }
-
-  const request = await prisma.maintenanceRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      property: {
-        select: {
-          ownerId: true,
+  try {
+    await prisma.$transaction(async (tx) => {
+      // status and owner are in the where again, so a second click or a second tab cannot slip through
+      const updated = await tx.maintenanceRequest.updateMany({
+        where: {
+          id: request.id,
+          status: "PENDING_APPROVAL",
+          property: { ownerId: user.id },
         },
-      },
-    },
-  });
+        data: {
+          status: "APPROVED",
+          approvedById: user.id,
+          approvedAt: new Date(),
+          rejectedAt: null,
+          rejectionReason: null,
+        },
+      });
+      if (updated.count !== 1) throw new Error("DECISION_CONFLICT");
 
-  if (!request) {
-    return { success: false, error: "Request not found." };
+      await tx.activityLog.create({
+        data: {
+          action: "Request approved",
+          previousStatus: "PENDING_APPROVAL",
+          newStatus: "APPROVED",
+          performedById: user.id,
+          maintenanceRequestId: request.id,
+          propertyId: request.propertyId,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "DECISION_CONFLICT") {
+      return { success: false, error: "This request has already been decided." };
+    }
+    console.error("Failed to approve request:", error);
+    return { success: false, error: "Could not approve the request. Try again." };
   }
 
-  if (request.property.ownerId !== user.id) {
-    return { success: false, error: "You are not authorized to approve this request." };
-  }
-
-  const previousStatus = request.status;
-
-  const updatedRequest = await prisma.$transaction(async (tx) => {
-    const updated = await tx.maintenanceRequest.update({
-      where: { id: request.id },
-      data: {
-        status: "APPROVED",
-        approvedById: user.id,
-        approvedAt: new Date(),
-        rejectedAt: null,
-        rejectionReason: null,
-      },
-    });
-
-    await tx.activityLog.create({
-      data: {
-        action: "Request approved",
-        previousStatus,
-        newStatus: "APPROVED",
-        performedById: user.id,
-        maintenanceRequestId: request.id,
-      },
-    });
-
-    return updated;
-  });
-
-  return {
-  success: true,
-};
-
+  revalidatePath(`/requests/${request.id}`);
+  revalidatePath("/caretaker/dashboard", "layout");
+  return { success: true };
 }
 
 export async function rejectRequest(requestId: string, reason: string) {
-  const user = await getCurrentUser();
+  const a = await requireRequestAccess(requestId, "OWNER");
+  if (!a.ok) return { success: false, error: a.error };
+  const { user, request } = a;
 
-  if (!user) {
-    return { success: false, error: "You must be logged in." };
+  // the reason comes from the browser: make sure it really is text
+  if (typeof reason !== "string") {
+    return { success: false, error: "Rejection reason is required." };
   }
-
-  if (user.role !== "OWNER") {
-    return { success: false, error: "Only property owners can reject requests." };
-  }
-
   const rejectionReason = reason.trim();
 
   if (!rejectionReason) {
@@ -91,56 +80,48 @@ export async function rejectRequest(requestId: string, reason: string) {
     };
   }
 
-  const request = await prisma.maintenanceRequest.findUnique({
-    where: { id: requestId },
-    include: {
-      property: {
-        select: {
-          ownerId: true,
+  if (request.status !== "PENDING_APPROVAL") {
+    return { success: false, error: "Only requests waiting for approval can be rejected." };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.maintenanceRequest.updateMany({
+        where: {
+          id: request.id,
+          status: "PENDING_APPROVAL",
+          property: { ownerId: user.id },
         },
-      },
-    },
-  });
+        data: {
+          status: "REJECTED",
+          rejectedAt: new Date(),
+          rejectionReason,
+          approvedById: null,
+          approvedAt: null,
+        },
+      });
+      if (updated.count !== 1) throw new Error("DECISION_CONFLICT");
 
-  if (!request) {
-    return { success: false, error: "Request not found." };
+      await tx.activityLog.create({
+        data: {
+          action: "Request rejected",
+          previousStatus: "PENDING_APPROVAL",
+          newStatus: "REJECTED",
+          performedById: user.id,
+          maintenanceRequestId: request.id,
+          propertyId: request.propertyId,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "DECISION_CONFLICT") {
+      return { success: false, error: "This request has already been decided." };
+    }
+    console.error("Failed to reject request:", error);
+    return { success: false, error: "Could not reject the request. Try again." };
   }
 
-  if (request.property.ownerId !== user.id) {
-    return {
-      success: false,
-      error: "You are not authorized to reject this request.",
-    };
-  }
-
-  const previousStatus = request.status;
-
-  const updatedRequest = await prisma.$transaction(async (tx) => {
-    const updated = await tx.maintenanceRequest.update({
-      where: { id: request.id },
-      data: {
-        status: "REJECTED",
-        rejectedAt: new Date(),
-        rejectionReason,
-        approvedById: null,
-        approvedAt: null,
-      },
-    });
-
-    await tx.activityLog.create({
-      data: {
-        action: "Request rejected",
-        previousStatus,
-        newStatus: "REJECTED",
-        performedById: user.id,
-        maintenanceRequestId: request.id,
-      },
-    });
-
-    return updated;
-  });
-
-  return {
-  success: true,
-};
+  revalidatePath(`/requests/${request.id}`);
+  revalidatePath("/caretaker/dashboard", "layout");
+  return { success: true };
 }

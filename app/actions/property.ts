@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { requireUser, requireOwnerOfProperty } from "@/lib/authz";
 
 type CreatePropertyInput = {
   address: string;
@@ -19,9 +20,9 @@ type InviteCaretakerResult =
   | { success: true; linked: boolean; message: string }
   | { success: false; error: string };
 
+// Only for "which property do I open first". NOT a permission check.
 export async function getPropertyId(): Promise<string | null> {
   const user = await getCurrentUser();
-
   if (!user) return null;
 
   const property = await prisma.property.findFirst({
@@ -38,34 +39,35 @@ export async function inviteCaretaker(
   propertyId: string,
   caretakerEmail: string
 ): Promise<InviteCaretakerResult> {
-  const email = caretakerEmail.trim().toLowerCase();
-
-  if (!propertyId) return { success: false, error: "Property is required." };
-  if (!email) {
+  if (typeof caretakerEmail !== "string") {
     return { success: false, error: "Caretaker email is required." };
   }
-
-  const owner = await getCurrentUser();
-  if (!owner || owner.role !== "OWNER") {
-    return { success: false, error: "Only owners can invite caretakers." };
+  const email = caretakerEmail.trim().toLowerCase();
+  if (!email || email.length > 254 || !email.includes("@")) {
+    return { success: false, error: "Enter a valid email." };
   }
 
-  const property = await prisma.property.findFirst({
-    where: { id: propertyId, ownerId: owner.id },
-    select: { id: true },
-  });
+  // checks: logged in + OWNER + property is theirs (not found otherwise)
+  const a = await requireOwnerOfProperty(propertyId);
+  if (!a.ok) return { success: false, error: a.error };
 
-  if (!property) return { success: false, error: "Property not found." };
+  const owner = a.user;
+  const property = a.property;
 
   const caretaker = await prisma.user.findUnique({ where: { email } });
 
-  if (caretaker?.role === "OWNER") {
-    return { success: false, error: "That account is not a caretaker." };
+  // Same answer whether the email is missing or is not a caretaker
+  if (caretaker && caretaker.role !== "CARETAKER") {
+    return {
+      success: true,
+      linked: false,
+      message: "Invitation saved. The caretaker will be linked after signup.",
+    };
   }
 
   if (caretaker) {
-    await prisma.property.update({
-      where: { id: property.id },
+    await prisma.property.updateMany({
+      where: { id: property.id, ownerId: owner.id },
       data: { caretakerId: caretaker.id },
     });
 
@@ -82,7 +84,13 @@ export async function inviteCaretaker(
   }
 
   const pendingInvitation = await prisma.invitation.findFirst({
-    where: { propertyId: property.id, email, status: "PENDING" },
+    where: {
+      propertyId: property.id,
+      email,
+      status: "PENDING",
+      expiresAt: { gt: new Date() },
+    },
+    select: { id: true },
   });
 
   if (pendingInvitation) {
@@ -114,39 +122,30 @@ export async function createProperty(
   input: CreatePropertyInput
 ): Promise<CreatePropertyResult> {
   const address =
-    typeof input.address === "string" ? input.address.trim() : "";
-  const city = typeof input.city === "string" ? input.city.trim() || null : null;
+    typeof input?.address === "string" ? input.address.trim() : "";
+  const city =
+    typeof input?.city === "string" ? input.city.trim() || null : null;
 
   if (!address) {
     return { success: false, error: "Address is required." };
   }
-
-  const user = await getCurrentUser();
-
-  if (!user) {
-    return { success: false, error: "You must be logged in." };
+  if (address.length > 200 || (city && city.length > 100)) {
+    return { success: false, error: "Address or city is too long." };
   }
 
-  if (user.role !== "OWNER") {
-    return {
-      success: false,
-      error: "Only property owners can add properties.",
-    };
-  }
+  // logged in + OWNER
+  const a = await requireUser(["OWNER"]);
+  if (!a.ok) return { success: false, error: a.error };
 
   try {
     const property = await prisma.property.create({
       data: {
         address,
         city,
-        ownerId: user.id,
+        ownerId: a.user.id,
         caretakerId: null,
       },
-      select: {
-        id: true,
-        address: true,
-        city: true,
-      },
+      select: { id: true, address: true, city: true },
     });
 
     return { success: true, data: property };

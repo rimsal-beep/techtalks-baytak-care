@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "../../lib/prisma";
-import { verifyPassword } from "../../lib/auth";
+import { hashPassword, verifyPassword } from "../../lib/auth";
 import { createSessionToken } from "../../lib/session";
 import { cookies } from "next/headers";
 import {
@@ -14,18 +14,34 @@ type LoginInput = {
   password: string;
 };
 
+// A real hash, created once. A missing account does the same slow check
+// as a wrong password, so the time does not reveal which emails exist.
+const DUMMY_HASH = hashPassword("not-a-real-password");
+
+const INVALID = {
+  success: false as const,
+  error: "Invalid email or password.",
+};
+
 export async function login(input: LoginInput) {
-  if (!input.email?.trim() || !input.password) {
-    return { success: false, error: "Email and password are required." };
+  const email =
+    typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+
+  if (!email || !password) {
+    return {
+      success: false as const,
+      error: "Email and password are required.",
+    };
   }
 
-  const email = input.email.trim().toLowerCase();
+  if (email.length > 254 || password.length > 128) return INVALID;
 
   const rateLimit = checkRateLimit(email);
 
   if (!rateLimit.allowed) {
     return {
-      success: false,
+      success: false as const,
       error: "Too many login attempts. Please try again later.",
     };
   }
@@ -35,14 +51,15 @@ export async function login(input: LoginInput) {
   });
 
   if (!user) {
-    return { success: false, error: "Invalid email or password." };
+    await verifyPassword(password, await DUMMY_HASH);
+    return INVALID;
   }
 
-  const isValid = await verifyPassword(input.password, user.passwordHash);
+  const isValid = await verifyPassword(password, user.passwordHash);
 
-  if (!isValid) {
-    return { success: false, error: "Invalid email or password." };
-  }
+  if (!isValid) return INVALID;
+
+  // TODO (Task 1): refuse login until the email is verified.
 
   resetRateLimit(email);
 
@@ -55,6 +72,10 @@ export async function login(input: LoginInput) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
+  // The old unsigned cookie is gone for good. Clear it from old browsers.
+  cookieStore.delete("propertyId");
+
+  // From the database, not from a cookie. Only returned, never stored.
   const property = await prisma.property.findFirst({
     where:
       user.role === "OWNER"
@@ -63,17 +84,8 @@ export async function login(input: LoginInput) {
     select: { id: true },
   });
 
-  if (property) {
-    cookieStore.set("propertyId", property.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-  }
-
   return {
-    success: true,
+    success: true as const,
     data: {
       id: user.id,
       email: user.email,

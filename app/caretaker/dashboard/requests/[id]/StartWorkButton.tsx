@@ -20,19 +20,24 @@ export default function StartWorkButton({
     setLoading(true);
     setError("");
 
-    const result = await startWork(requestId);
+    try {
+      const result = await startWork(requestId);
 
-    if (!result.success) {
-      setError(result.error);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+
+      router.refresh();
+    } catch {
+      setError("Unable to start work. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.refresh();
   }
 
   return (
-    <div>
+    <div style={{ marginLeft: "auto", flex: "none" }}>
       <button
         type="button"
         onClick={handleStart}
@@ -44,7 +49,7 @@ export default function StartWorkButton({
       </button>
 
       {error && (
-        <p style={{ marginTop: 8, color: "crimson" }}>
+        <p style={{ marginTop: 8, color: "var(--no)" }}>
           {error}
         </p>
       )}

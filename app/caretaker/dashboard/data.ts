@@ -11,10 +11,15 @@ import { safeUrl } from "@/lib/safeUrl";
  */
 export const getCaretakerData = cache(async () => {
   const user = await getCurrentUser();
+
   if (!user) redirect("/login");
   if (user.role !== "CARETAKER") redirect("/");
 
-  const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const startOfMonth = new Date(
+    new Date().getFullYear(),
+    new Date().getMonth(),
+    1
+  );
 
   const properties = await prisma.property.findMany({
     where: { caretakerId: user.id },
@@ -25,14 +30,24 @@ export const getCaretakerData = cache(async () => {
       city: true,
       owner: { select: { name: true } },
       checklistItems: {
-        where: { completed: true, completedAt: { gte: startOfMonth } },
-        select: { text: true, completedAt: true },
+        where: {
+          completed: true,
+          completedAt: { gte: startOfMonth },
+        },
+        select: {
+          text: true,
+          completedAt: true,
+        },
       },
     },
   });
 
   const requests = await prisma.maintenanceRequest.findMany({
-    where: { reportedById: user.id, property: { caretakerId: user.id } },
+    where: {
+      property: {
+        caretakerId: user.id,
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: 200,
     select: {
@@ -45,12 +60,19 @@ export const getCaretakerData = cache(async () => {
       createdAt: true,
       rejectionReason: true,
       propertyId: true,
-      property: { select: { address: true } },
+      property: {
+        select: {
+          address: true,
+        },
+      },
     },
   });
 
-   return {
-    user: { name: user.name ?? "Caretaker" },
+
+  return {
+    user: {
+      name: user.name ?? "Caretaker",
+    },
     properties,
     requests: requests.map((request) => ({
       ...request,
@@ -67,15 +89,35 @@ export type CaretakerRequest = CaretakerData["requests"][number];
  * Picks the property from ?property=<id>. If the id is missing or is not one of
  * THIS caretaker's properties, it quietly falls back to the first one.
  */
-export function pickProperty(properties: CaretakerProperty[], wanted?: string | string[]) {
+export function pickProperty(
+  properties: CaretakerProperty[],
+  wanted?: string | string[]
+) {
   const id = Array.isArray(wanted) ? wanted[0] : wanted;
-  return properties.find((p) => p.id === id) ?? properties[0] ?? null;
+
+  return (
+    properties.find((p) => p.id === id) ??
+    properties[0] ??
+    null
+  );
 }
 
 /** Month progress for one property: which items are done and when. */
-export function monthProgress(property: CaretakerProperty, allItems: readonly string[]) {
+export function monthProgress(
+  property: CaretakerProperty,
+  allItems: readonly string[]
+) {
   const doneAt = new Map<string, Date | null>();
-  for (const item of property.checklistItems) doneAt.set(item.text, item.completedAt);
+
+  for (const item of property.checklistItems) {
+    doneAt.set(item.text, item.completedAt);
+  }
+
   const done = allItems.filter((t) => doneAt.has(t)).length;
-  return { doneAt, done, total: allItems.length };
+
+  return {
+    doneAt,
+    done,
+    total: allItems.length,
+  };
 }

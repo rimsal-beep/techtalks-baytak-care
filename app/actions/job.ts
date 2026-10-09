@@ -6,14 +6,71 @@ import { requireUser, requireRequestAccess } from "@/lib/authz";
 import { saveUpload } from "@/lib/uploads";
 
 /**
- * Actions for the "Complete the job" form on the caretaker request page.
+ * Actions for the caretaker request page:
+ * start the work, upload files, and complete the job.
  */
 
 const MAX_BYTES = 5 * 1024 * 1024; // same limit as the report form
 const MAX_COST = 1_000_000_000;
 
-// After PR #59 is merged (start work), change this to ["IN_PROGRESS"] only.
-const COMPLETABLE: string[] = ["APPROVED", "IN_PROGRESS"];
+// Only work that was started can be completed.
+const COMPLETABLE: string[] = ["IN_PROGRESS"];
+
+/** Approved -> In progress. Only the caretaker of this property. */
+export async function startWork(requestId: string) {
+  // logged in + CARETAKER + the request is on THEIR property (not found otherwise)
+  const a = await requireRequestAccess(requestId, "CARETAKER");
+  if (!a.ok) return { success: false as const, error: a.error };
+  const { user, request } = a;
+
+  if (request.status !== "APPROVED") {
+    return {
+      success: false as const,
+      error: "Only approved requests can be started.",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // status and caretaker are in the where again, so a double tap
+      // or a stale page cannot start it twice.
+      const started = await tx.maintenanceRequest.updateMany({
+        where: {
+          id: request.id,
+          status: "APPROVED",
+          property: { caretakerId: user.id },
+        },
+        data: { status: "IN_PROGRESS" },
+      });
+      if (started.count !== 1) throw new Error("START_WORK_CONFLICT");
+
+      await tx.activityLog.create({
+        data: {
+          action: "Work started",
+          previousStatus: "APPROVED",
+          newStatus: "IN_PROGRESS",
+          performedById: user.id,
+          maintenanceRequestId: request.id,
+          propertyId: request.propertyId,
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "START_WORK_CONFLICT") {
+      return {
+        success: false as const,
+        error: "This request has already been started or changed.",
+      };
+    }
+    console.error("Failed to start work:", error);
+    return { success: false as const, error: "Could not start the work. Try again." };
+  }
+
+  revalidatePath("/caretaker/dashboard", "layout");
+  revalidatePath(`/caretaker/dashboard/requests/${request.id}`);
+  revalidatePath(`/requests/${request.id}`);
+  return { success: true as const };
+}
 
 /** Saves ONE file privately and returns its URL. */
 export async function uploadJobFile(formData: FormData) {
@@ -63,12 +120,12 @@ type CompleteJobInput = {
 function cleanUrl(value: unknown) {
   if (typeof value !== "string") return null;
   const v = value.trim();
-  if (/^\/uploads\/[A-Za-z0-9-]+\.(jpg|png|webp|gif|pdf)$/.test(v)) return v;
+  if (/^\/uploads\/[A-Za-z0-9-]+\.(jpg|jpeg|png|webp|gif|pdf)$/.test(v)) return v;
   if (/^https:\/\/\S+$/i.test(v) && v.length < 2000) return v;
   return null;
 }
 
-/** Marks an approved request as completed, with final cost, photos and receipt. */
+/** Marks an in-progress request as completed, with final cost, photos and receipt. */
 export async function completeJob(input: CompleteJobInput) {
   const cost = input?.actualCost;
   if (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0 || cost > MAX_COST) {
@@ -94,7 +151,7 @@ export async function completeJob(input: CompleteJobInput) {
   const { user, request } = a;
 
   if (!COMPLETABLE.includes(request.status)) {
-    return { success: false as const, error: "Only approved requests can be completed." };
+    return { success: false as const, error: "Only in-progress requests can be completed." };
   }
 
   try {
@@ -104,7 +161,7 @@ export async function completeJob(input: CompleteJobInput) {
       const done = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
-          status: { in: ["APPROVED", "IN_PROGRESS"] },
+          status: "IN_PROGRESS",
           property: { caretakerId: user.id },
         },
         data: {
@@ -121,7 +178,7 @@ export async function completeJob(input: CompleteJobInput) {
       await tx.activityLog.create({
         data: {
           action: "Request completed",
-          previousStatus: request.status as "APPROVED" | "IN_PROGRESS",
+          previousStatus: "IN_PROGRESS",
           newStatus: "COMPLETED",
           performedById: user.id,
           maintenanceRequestId: request.id,
@@ -138,5 +195,7 @@ export async function completeJob(input: CompleteJobInput) {
   }
 
   revalidatePath("/caretaker/dashboard", "layout");
+  revalidatePath(`/caretaker/dashboard/requests/${request.id}`);
+  revalidatePath(`/requests/${request.id}`);
   return { success: true as const };
 }

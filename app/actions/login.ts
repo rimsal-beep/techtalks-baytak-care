@@ -64,13 +64,15 @@ export async function login(input: LoginInput) {
   });
 
   if (property) {
-    cookieStore.set("propertyId", property.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-  }
+  cookieStore.set("propertyId", property.id, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+} else {
+  cookieStore.delete("propertyId");
+}
 
   return {
     success: true,

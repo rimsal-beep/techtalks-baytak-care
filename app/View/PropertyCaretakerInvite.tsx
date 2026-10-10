@@ -37,7 +37,7 @@ export default function PropertyCaretakerInvite({
 			<div className={styles.eyebrow}>Caretaker</div>
 			<h2 className={styles.title}>Invite a caretaker</h2>
 			<p className={styles.description}>
-				Existing caretaker accounts are linked immediately. New accounts are linked after signup.
+				Caretakers receive an email invitation and must sign in or register, then explicitly accept it.
 			</p>
 
 			<form onSubmit={handleSubmit} className={styles.form}>

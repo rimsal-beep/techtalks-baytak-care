@@ -44,7 +44,7 @@ model Property {
   ownerId String
   owner   User   @relation("PropertyOwner", fields: [ownerId], references: [id])
 
-  caretakerId String?
+  caretakerId String? @unique
   caretaker   User?   @relation("PropertyCaretaker", fields: [caretakerId], references: [id])
 
   maintenanceRequests MaintenanceRequest[]
@@ -53,25 +53,31 @@ model Property {
   activityLogs        ActivityLog[]
 
   @@index([ownerId])
-  @@index([caretakerId])
 }
 
 model Invitation {
-  id        String           @id @default(uuid())
-  email     String
-  token     String           @unique
-  status    InvitationStatus @default(PENDING)
-  expiresAt DateTime
-  createdAt DateTime         @default(now())
+  id           String           @id @default(uuid())
+  email        String
+  tokenHash    String           @unique
+  status       InvitationStatus @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime         @default(now())
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+
+  emailAttempts Int       @default(0)
+  lastEmailAt   DateTime?
+  emailSentAt   DateTime?
 
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
 
   invitedById String
-  invitedBy   User   @relation(fields: [invitedById], references: [id])
+  invitedBy   User @relation(fields: [invitedById], references: [id])
 
   @@index([propertyId])
   @@index([status])
+  @@index([email, status])
 }
 
 enum InvitationStatus {

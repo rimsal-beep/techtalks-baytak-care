@@ -1,16 +1,23 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
 
-export default function SignupPage() {
+function SignupContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"OWNER" | "CARETAKER" | "">("");
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const nextPath =
+    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
+      ? nextParam
+      : null;
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -60,7 +67,7 @@ export default function SignupPage() {
     if (role === "OWNER") {
       window.location.href = "/profile";
     } else {
-      window.location.href = "/caretaker/dashboard";
+      window.location.href = nextPath ?? "/caretaker/dashboard";
     }
   }
 
@@ -178,8 +185,16 @@ export default function SignupPage() {
       </form>
 
       <p className={f.foot}>
-        Already have an account? <a href="/login">Log in</a>
+        Already have an account? <a href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}>Log in</a>
       </p>
     </AuthShell>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupContent />
+    </Suspense>
   );
 }

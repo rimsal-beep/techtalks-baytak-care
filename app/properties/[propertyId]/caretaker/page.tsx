@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import PropertyCaretakerInvite from "@/app/View/PropertyCaretakerInvite";
 import RemoveCaretakerButton from "@/app/View/RemoveCaretakerButton";
 import ResendInvitationButton from "@/app/View/ResendInvitationButton";
+import RevokeInvitationButton from "@/app/View/RevokeInvitationButton";
 
 export default async function PropertyCaretakerPage({
   params,
@@ -149,6 +150,7 @@ export default async function PropertyCaretakerPage({
                     propertyId={property.id}
                     email={invitation.email}
                   />
+                  <RevokeInvitationButton invitationId={invitation.id} />
                 </div>
               ))}
             </section>

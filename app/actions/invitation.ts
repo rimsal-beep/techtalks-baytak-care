@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
 import { getCurrentUser } from "@/lib/session";
+import { isId, requireUser } from "@/lib/authz";
 
 type ActionResult =
   | { success: true; message: string }
@@ -114,6 +115,49 @@ export async function acceptInvitation(
       error:
         "Unable to accept invitation. It may already be used, expired, or the caretaker may already be assigned.",
     };
+  }
+}
+
+export async function revokeInvitation(
+  invitationId: string
+): Promise<ActionResult> {
+  const auth = await requireUser(["OWNER"]);
+
+  if (!auth.ok) {
+    return { success: false, error: auth.error };
+  }
+
+  if (!isId(invitationId) || !invitationId.trim()) {
+    return { success: false, error: "Invalid invitation." };
+  }
+
+  try {
+    const now = new Date();
+    // Ownership and lifecycle checks belong in the write itself.
+    // A concurrent accept, revoke, or expiry cannot transition this row twice.
+    const revoked = await prisma.invitation.updateMany({
+      where: {
+        id: invitationId,
+        property: { ownerId: auth.user.id },
+        status: "PENDING",
+        expiresAt: { gt: now },
+      },
+      data: {
+        status: "REVOKED",
+        revokedAt: now,
+      },
+    });
+
+    if (revoked.count !== 1) {
+      return {
+        success: false,
+        error: "Invitation unavailable. It may have already changed or expired.",
+      };
+    }
+
+    return { success: true, message: "Invitation revoked successfully." };
+  } catch {
+    return { success: false, error: "Failed to revoke invitation." };
   }
 }
 

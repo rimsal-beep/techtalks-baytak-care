@@ -1,3 +1,4 @@
+
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
@@ -8,7 +9,9 @@ const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 function signSession(userId: string, expiresAt: number) {
   if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
-    throw new Error("SESSION_SECRET must be set and at least 32 characters.");
+    throw new Error(
+      "SESSION_SECRET must be set and at least 32 characters."
+    );
   }
 
   return createHmac("sha256", SESSION_SECRET)
@@ -41,7 +44,6 @@ function verifySessionToken(token: string) {
   const expected = Buffer.from(signSession(userId, expiresAt));
   const given = Buffer.from(signature);
 
-  // compare the BYTE length, otherwise timingSafeEqual throws
   if (given.length !== expected.length) return null;
 
   return timingSafeEqual(given, expected) ? userId : null;
@@ -59,6 +61,33 @@ export async function getCurrentUser() {
 
   return prisma.user.findUnique({
     where: { id: userId },
-    omit: { passwordHash: true }, // never hand the hash to the rest of the app
+    omit: { passwordHash: true },
   });
+}
+
+/**
+ * Requires an authenticated user and, for owners, a verified email.
+ * Caretaker access remains unchanged.
+ */
+export async function requireVerifiedUser() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return {
+      success: false as const,
+      error: "You must be logged in.",
+    };
+  }
+
+  if (user.role === "OWNER" && !user.emailVerifiedAt) {
+    return {
+      success: false as const,
+      error: "Please verify your email before continuing.",
+    };
+  }
+
+  return {
+    success: true as const,
+    user,
+  };
 }

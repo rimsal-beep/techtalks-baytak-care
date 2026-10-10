@@ -15,8 +15,7 @@ type LoginInput = {
   password: string;
 };
 
-// A real hash, created once. A missing account does the same slow check
-// as a wrong password, so the time does not reveal which emails exist.
+// A missing account gets the same slow password check as a wrong password.
 const DUMMY_HASH = hashPassword("not-a-real-password");
 
 const INVALID = {
@@ -73,7 +72,13 @@ export async function login(input: LoginInput) {
     return INVALID;
   }
 
-  // TODO (Task 1): refuse login until the email is verified.
+  // Owners must verify their email before receiving a session.
+  if (user.role === "OWNER" && !user.emailVerifiedAt) {
+    return {
+      success: false as const,
+      error: "Please verify your email before logging in.",
+    };
+  }
 
   resetRateLimit(email);
 

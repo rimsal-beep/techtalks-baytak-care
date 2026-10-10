@@ -1,3 +1,4 @@
+
 "use server";
 
 import { prisma } from "../../lib/prisma";
@@ -97,38 +98,10 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       },
     });
 
-    if (user.role === "CARETAKER") {
-      // TODO (Task 1, F1): only link when the email is verified.
-      // Today anyone who types an invited email gets the property.
-      const invitations = await prisma.invitation.findMany({
-        where: {
-          email: user.email,
-          status: "PENDING",
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true, propertyId: true },
-      });
 
-      if (invitations.length > 0) {
-        await prisma.$transaction([
-          // only fill a property that has no caretaker yet
-          ...invitations.map((invitation) =>
-            prisma.property.updateMany({
-              where: { id: invitation.propertyId, caretakerId: null },
-              data: { caretakerId: user.id },
-            })
-          ),
-          prisma.invitation.updateMany({
-            where: {
-              id: {
-                in: invitations.map((invitation) => invitation.id),
-              },
-            },
-            data: { status: "ACCEPTED" },
-          }),
-        ]);
-      }
-    }
+    // BAY71:
+// Don't automatically assign properties during signup,
+// Caretakers must accept a valid invitation
 
     const cookieStore = await cookies();
 

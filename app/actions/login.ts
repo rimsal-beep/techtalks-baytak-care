@@ -1,3 +1,4 @@
+
 "use server";
 
 import { prisma } from "../../lib/prisma";
@@ -25,8 +26,14 @@ const INVALID = {
 
 export async function login(input: LoginInput) {
   const email =
-    typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
+    typeof input?.email === "string"
+      ? input.email.trim().toLowerCase()
+      : "";
+
+  const password =
+    typeof input?.password === "string"
+      ? input.password
+      : "";
 
   if (!email || !password) {
     return {
@@ -35,7 +42,9 @@ export async function login(input: LoginInput) {
     };
   }
 
-  if (email.length > 254 || password.length > 128) return INVALID;
+  if (email.length > 254 || password.length > 128) {
+    return INVALID;
+  }
 
   const rateLimit = checkRateLimit(email);
 
@@ -55,9 +64,14 @@ export async function login(input: LoginInput) {
     return INVALID;
   }
 
-  const isValid = await verifyPassword(password, user.passwordHash);
+  const isValid = await verifyPassword(
+    password,
+    user.passwordHash
+  );
 
-  if (!isValid) return INVALID;
+  if (!isValid) {
+    return INVALID;
+  }
 
   // TODO (Task 1): refuse login until the email is verified.
 
@@ -72,10 +86,10 @@ export async function login(input: LoginInput) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
-  // The old unsigned cookie is gone for good. Clear it from old browsers.
+  // Remove the old propertyId cookie.
   cookieStore.delete("propertyId");
 
-  // From the database, not from a cookie. Only returned, never stored.
+  // Get the user's property from the database.
   const property = await prisma.property.findFirst({
     where:
       user.role === "OWNER"

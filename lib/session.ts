@@ -7,8 +7,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 function signSession(userId: string, expiresAt: number) {
-  if (!SESSION_SECRET) {
-    throw new Error("SESSION_SECRET is not configured.");
+  if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+    throw new Error("SESSION_SECRET must be set and at least 32 characters.");
   }
 
   return createHmac("sha256", SESSION_SECRET)
@@ -38,16 +38,13 @@ function verifySessionToken(token: string) {
     return null;
   }
 
-  const expectedSignature = signSession(userId, expiresAt);
+  const expected = Buffer.from(signSession(userId, expiresAt));
+  const given = Buffer.from(signature);
 
-  if (signature.length !== expectedSignature.length) return null;
+  // compare the BYTE length, otherwise timingSafeEqual throws
+  if (given.length !== expected.length) return null;
 
-  const isValid = timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
-
-  return isValid ? userId : null;
+  return timingSafeEqual(given, expected) ? userId : null;
 }
 
 export async function getCurrentUser() {
@@ -62,5 +59,6 @@ export async function getCurrentUser() {
 
   return prisma.user.findUnique({
     where: { id: userId },
+    omit: { passwordHash: true }, // never hand the hash to the rest of the app
   });
 }

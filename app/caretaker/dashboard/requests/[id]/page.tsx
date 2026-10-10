@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { safeUrl } from "@/lib/safeUrl";
 
 import styles from "../../Caretaker.module.css";
 import d from "../../RequestDetail.module.css";
@@ -40,7 +41,7 @@ export default async function RequestPage({
   if (user.role !== "CARETAKER") redirect("/");
 
   // Only requests of properties that belong to THIS caretaker can be opened.
-  const r = await prisma.maintenanceRequest.findFirst({
+    const found = await prisma.maintenanceRequest.findFirst({
     where: { id, property: { caretakerId: user.id } },
     select: {
       id: true,
@@ -72,7 +73,16 @@ export default async function RequestPage({
     },
   });
 
-  if (!r) notFound();
+    if (!found) notFound();
+
+  // Only safe links reach the page (saved uploads or https), never anything else.
+  const r = {
+    ...found,
+    issuePhotoUrls: found.issuePhotoUrls.map(safeUrl).filter(Boolean),
+    beforePhotoUrls: found.beforePhotoUrls.map(safeUrl).filter(Boolean),
+    afterPhotoUrls: found.afterPhotoUrls.map(safeUrl).filter(Boolean),
+    receiptUrl: found.receiptUrl ? safeUrl(found.receiptUrl) || null : null,
+  };
 
   const owner = r.property.owner?.name?.split(/\s+/)[0] || "The owner";
   const st = STATUS[r.status] ?? {

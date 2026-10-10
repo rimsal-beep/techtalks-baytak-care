@@ -1251,7 +1251,7 @@
     padding: 16px;
     margin-top: 18px;
   }
-  .nbOk .nbBtn {
+  .nbOk a.nbBtn {
     display: none;
   }
   .rgrid {

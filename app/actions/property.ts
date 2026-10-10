@@ -1,11 +1,11 @@
-
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
-import { Prisma } from "@/generated/prisma/client";
+import { requireUser, requireOwnerOfProperty } from "@/lib/authz";
 
 type CreatePropertyInput = {
   address: string;
@@ -25,9 +25,10 @@ type InviteCaretakerResult =
 
 const INVITATION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Only used to choose which property to open first.
+// This is NOT an authorization check.
 export async function getPropertyId(): Promise<string | null> {
   const user = await getCurrentUser();
-
   if (!user) return null;
 
   const property = await prisma.property.findFirst({
@@ -64,39 +65,26 @@ export async function inviteCaretaker(
     };
   }
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (
+    !email ||
+    email.length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  ) {
     return {
       success: false,
       error: "A valid caretaker email is required.",
     };
   }
 
-  const owner = await getCurrentUser();
+  // Authorization: logged-in owner who owns this property.
+  const a = await requireOwnerOfProperty(propertyId);
 
-  if (!owner || owner.role !== "OWNER") {
-    return {
-      success: false,
-      error: "Only property owners can invite caretakers.",
-    };
+  if (!a.ok) {
+    return { success: false, error: a.error };
   }
 
-  const property = await prisma.property.findFirst({
-    where: {
-      id: propertyId,
-      ownerId: owner.id,
-    },
-    select: {
-      id: true,
-      caretakerId: true,
-    },
-  });
-
-  if (!property) {
-    return {
-      success: false,
-      error: "Property not found.",
-    };
-  }
+  const owner = a.user;
+  const property = a.property;
 
   if (property.caretakerId) {
     return {
@@ -122,9 +110,7 @@ export async function inviteCaretaker(
 
   if (caretaker) {
     const existingAssignment = await prisma.property.findFirst({
-      where: {
-        caretakerId: caretaker.id,
-      },
+      where: { caretakerId: caretaker.id },
       select: { id: true },
     });
 
@@ -136,26 +122,23 @@ export async function inviteCaretaker(
     }
   }
 
+  // Expire outdated invitations.
   await prisma.invitation.updateMany({
-  where: {
-    propertyId: property.id,
-    email,
-    status: "PENDING",
-    expiresAt: { lte: new Date() },
-  },
-  data: {
-    status: "EXPIRED",
-  },
-});
+    where: {
+      propertyId: property.id,
+      email,
+      status: "PENDING",
+      expiresAt: { lte: new Date() },
+    },
+    data: { status: "EXPIRED" },
+  });
 
   const existingInvitation = await prisma.invitation.findFirst({
     where: {
       propertyId: property.id,
       email,
       status: "PENDING",
-      expiresAt: {
-        gt: new Date(),
-      },
+      expiresAt: { gt: new Date() },
     },
     select: { id: true },
   });
@@ -226,48 +209,44 @@ export async function inviteCaretaker(
         emailAttempts: 1,
         lastEmailAt: new Date(),
       },
-      select: {
-        id: true,
-      },
+      select: { id: true },
     });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await prisma.invitation.findFirst({
+        where: {
+          propertyId: property.id,
+          email,
+          status: "PENDING",
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
 
-    } catch (error) {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  ) {
+      if (existing) {
+        return {
+          success: true,
+          linked: false,
+          message: "A valid invitation already exists for this email.",
+        };
+      }
 
-    const existing = await prisma.invitation.findFirst({
-  where: {
-    propertyId: property.id,
-    email,
-    status: "PENDING",
-    expiresAt: { gt: new Date() },
-  },
-  select: { id: true },
-});
+      return {
+        success: false,
+        error: "Invitation could not be created. Please try again.",
+      };
+    }
 
-if (existing) {
-  return {
-    success: true,
-    linked: false,
-    message: "A valid invitation already exists for this email.",
-  };
-}
+    console.error("Failed to create caretaker invitation:", error);
 
-return {
-  success: false,
-  error: "Invitation could not be created. Please try again.",
-};
+    return {
+      success: false,
+      error: "Failed to create invitation.",
+    };
   }
-
-  console.error("Failed to create caretaker invitation:", error);
-
-  return {
-    success: false,
-    error: "Failed to create invitation.",
-  };
-}
 
   try {
     await sendCaretakerInvitationEmail(email, invitationUrl);
@@ -282,20 +261,15 @@ return {
 
   try {
     await prisma.invitation.update({
-      where: {
-        id: invitation.id,
-      },
-      data: {
-        emailSentAt: new Date(),
-      },
+      where: { id: invitation.id },
+      data: { emailSentAt: new Date() },
     });
   } catch (error) {
     console.error("Failed to record invitation email delivery:", error);
 
     return {
       success: false,
-      error:
-        "Email was submitted, but delivery status could not be saved.",
+      error: "Email was submitted, but delivery status could not be saved.",
     };
   }
 
@@ -310,10 +284,12 @@ export async function createProperty(
   input: CreatePropertyInput
 ): Promise<CreatePropertyResult> {
   const address =
-    typeof input.address === "string" ? input.address.trim() : "";
+    typeof input?.address === "string"
+      ? input.address.trim()
+      : "";
 
   const city =
-    typeof input.city === "string"
+    typeof input?.city === "string"
       ? input.city.trim() || null
       : null;
 
@@ -324,20 +300,17 @@ export async function createProperty(
     };
   }
 
-  const user = await getCurrentUser();
-
-  if (!user) {
+  if (address.length > 200 || (city && city.length > 100)) {
     return {
       success: false,
-      error: "You must be logged in.",
+      error: "Address or city is too long.",
     };
   }
 
-  if (user.role !== "OWNER") {
-    return {
-      success: false,
-      error: "Only property owners can add properties.",
-    };
+  const a = await requireUser(["OWNER"]);
+
+  if (!a.ok) {
+    return { success: false, error: a.error };
   }
 
   try {
@@ -345,7 +318,7 @@ export async function createProperty(
       data: {
         address,
         city,
-        ownerId: user.id,
+        ownerId: a.user.id,
         caretakerId: null,
       },
       select: {

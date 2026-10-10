@@ -71,7 +71,9 @@ const RESULT_TEXT: Record<string, string> = {
 };
 
 const niceType = (value: string) => value.charAt(0) + value.slice(1).toLowerCase();
-
+// Only our own uploads or https links. Blocks javascript: and data: links.
+const safeUrl = (url: string) =>
+  /^\/uploads\/[\w.-]+$/.test(url) || /^https:\/\//i.test(url) ? url : "";
 const dateLabel = (date: Date) =>
   new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -101,7 +103,7 @@ export default async function PropertyDetailsPage({
     redirect("/login");
   }
 
-  if (user.role === "CARETAKER") {
+    if (user.role !== "OWNER") {
     redirect("/caretaker/dashboard");
   }
 
@@ -147,7 +149,7 @@ export default async function PropertyDetailsPage({
 
   const checklist = checklistProgress(property.checklistItems);
 
-  const requests = await prisma.maintenanceRequest.findMany({
+    const found = await prisma.maintenanceRequest.findMany({
     where: {
       propertyId: property.id,
     },
@@ -161,7 +163,16 @@ export default async function PropertyDetailsPage({
     orderBy: {
       createdAt: "desc",
     },
+    take: 200,
   });
+
+  const requests = found.map((request) => ({
+    ...request,
+    issuePhotoUrls: request.issuePhotoUrls.map(safeUrl).filter(Boolean),
+    beforePhotoUrls: request.beforePhotoUrls.map(safeUrl).filter(Boolean),
+    afterPhotoUrls: request.afterPhotoUrls.map(safeUrl).filter(Boolean),
+    receiptUrl: request.receiptUrl ? safeUrl(request.receiptUrl) || null : null,
+  }));
 
   const activityLogs = await prisma.activityLog.findMany({
     where: {
@@ -191,6 +202,7 @@ export default async function PropertyDetailsPage({
     orderBy: {
       createdAt: "desc",
     },
+        take: 300,
   });
 
   const { awaiting: pendingApprovals, inProgress } = summarizeRequests(requests);

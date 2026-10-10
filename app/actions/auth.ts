@@ -5,6 +5,7 @@ import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
 import { createSessionToken, getCurrentUser } from "../../lib/session";
 import { cookies } from "next/headers";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 type SignupInput = {
   name: string;
@@ -29,46 +30,50 @@ type SignupResult =
     };
 
 const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function signup(input: SignupInput): Promise<SignupResult> {
-  const trimmedName = input.name?.trim();
+  // The browser can send anything, so check every type first
+  const trimmedName =
+    typeof input?.name === "string" ? input.name.trim() : "";
+  const email =
+    typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+  const role = input?.role;
 
   if (!trimmedName) {
-    return {
-      success: false,
-      error: "Name is required.",
-    };
+    return { success: false, error: "Name is required." };
   }
 
-  if (!nameRegex.test(trimmedName)) {
+  if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
       error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
-  if (!input.email?.trim()) {
+  if (!email) {
+    return { success: false, error: "Email is required." };
+  }
+
+  if (email.length > 254 || !emailRegex.test(email)) {
+    return { success: false, error: "Enter a valid email." };
+  }
+
+  if (password.length < 8) {
     return {
       success: false,
-      error: "Email is required.",
+      error: "Password must be at least 8 characters.",
     };
   }
 
-  if (!input.password || input.password.length < 6) {
-    return {
-      success: false,
-      error: "Password must be at least 6 characters.",
-    };
+  if (password.length > 128) {
+    return { success: false, error: "Password is too long." };
   }
 
-  if (input.role !== "OWNER" && input.role !== "CARETAKER") {
-    return {
-      success: false,
-      error: "Please choose a role.",
-    };
+  if (role !== "OWNER" && role !== "CARETAKER") {
+    return { success: false, error: "Please choose a role." };
   }
-
-  const email = input.email.trim().toLowerCase();
 
   const existingUser = await prisma.user.findUnique({
     where: { email },
@@ -82,20 +87,21 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   }
 
   try {
-    const passwordHash = await hashPassword(input.password);
+    const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
         name: trimmedName,
         email,
         passwordHash,
-        role: input.role,
+        role,
       },
     });
 
-    // BAY-71:
-    // Do not automatically assign properties during signup.
-    // Caretakers must explicitly accept a valid invitation.
+
+    // BAY71:
+// Don't automatically assign properties during signup,
+// Caretakers must accept a valid invitation
 
     const cookieStore = await cookies();
 
@@ -118,10 +124,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   } catch (error) {
     console.error("Failed to create user:", error);
 
-    return {
-      success: false,
-      error: "Failed to create account.",
-    };
+    return { success: false, error: "Failed to create account." };
   }
 }
 
@@ -141,10 +144,7 @@ export async function updateProfile(
   const user = await getCurrentUser();
 
   if (!user) {
-    return {
-      success: false,
-      error: "You must be logged in.",
-    };
+    return { success: false, error: "You must be logged in." };
   }
 
   if (user.role !== "OWNER") {
@@ -154,17 +154,14 @@ export async function updateProfile(
     };
   }
 
-  const trimmedName = name.trim();
-  const trimmedPhone = phone.trim();
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  const trimmedPhone = typeof phone === "string" ? phone.trim() : "";
 
   if (!trimmedName) {
-    return {
-      success: false,
-      error: "Name is required.",
-    };
+    return { success: false, error: "Name is required." };
   }
 
-  if (!nameRegex.test(trimmedName)) {
+  if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
       error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
@@ -172,9 +169,19 @@ export async function updateProfile(
   }
 
   if (!trimmedPhone) {
+    return { success: false, error: "Phone number is required." };
+  }
+
+  // Check the phone again on the server (the form check can be skipped)
+  const parsed =
+    trimmedPhone.length <= 20
+      ? parsePhoneNumberFromString(trimmedPhone)
+      : undefined;
+
+  if (!parsed || !parsed.isValid()) {
     return {
       success: false,
-      error: "Phone number is required.",
+      error: "Please enter a valid international phone number.",
     };
   }
 
@@ -183,19 +190,14 @@ export async function updateProfile(
       where: { id: user.id },
       data: {
         name: trimmedName,
-        phone: trimmedPhone,
+        phone: parsed.number, // clean +countrycode form
       },
     });
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (error) {
     console.error("Failed to update profile:", error);
 
-    return {
-      success: false,
-      error: "Failed to update profile.",
-    };
+    return { success: false, error: "Failed to update profile." };
   }
 }

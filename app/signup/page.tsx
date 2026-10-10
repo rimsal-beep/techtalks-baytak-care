@@ -64,11 +64,11 @@ function SignupContent() {
       return;
     }
 
-    if (role === "OWNER") {
-      window.location.href = "/profile";
-    } else {
-      window.location.href = nextPath ?? "/caretaker/dashboard";
-    }
+   if (role === "OWNER") {
+  window.location.href = "/verify-email/sent";
+} else {
+  window.location.href = nextPath ?? "/caretaker/dashboard";
+}
   }
 
   return (

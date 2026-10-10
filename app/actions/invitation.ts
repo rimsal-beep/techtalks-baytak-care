@@ -4,7 +4,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
-import { getCurrentUser } from "@/lib/session";
+import { requireVerifiedUser, getCurrentUser } from "@/lib/session";
 
 type ActionResult =
   | { success: true; message: string }
@@ -17,6 +17,7 @@ export async function acceptInvitation(
     return { success: false, error: "Invalid invitation link." };
   }
 
+  // Keep caretaker invitation acceptance working as before.
   const user = await getCurrentUser();
 
   if (!user) {
@@ -30,9 +31,7 @@ export async function acceptInvitation(
     };
   }
 
-  const tokenHash = createHash("sha256")
-    .update(token)
-    .digest("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -68,8 +67,6 @@ export async function acceptInvitation(
         };
       }
 
-      // Claim the invitation before assigning the property.
-      // Both changes are part of the same transaction.
       const accepted = await tx.invitation.updateMany({
         where: {
           id: invitation.id,
@@ -87,8 +84,6 @@ export async function acceptInvitation(
         throw new Error("Invitation already used or expired.");
       }
 
-      // The database unique constraint on caretakerId prevents
-      // one caretaker from being assigned to multiple properties.
       const assignment = await tx.property.updateMany({
         where: {
           id: invitation.propertyId,
@@ -120,32 +115,27 @@ export async function acceptInvitation(
 export async function removeCaretaker(
   propertyId: string
 ): Promise<ActionResult> {
-  const owner = await getCurrentUser();
+  const auth = await requireVerifiedUser();
 
-  if (!owner || owner.role !== "OWNER") {
+  if (!auth.success || auth.user.role !== "OWNER") {
     return {
       success: false,
-      error: "Only owners can remove caretakers.",
+      error: "Only verified owners can remove caretakers.",
     };
   }
 
   if (typeof propertyId !== "string" || !propertyId.trim()) {
-    return {
-      success: false,
-      error: "Invalid property.",
-    };
+    return { success: false, error: "Invalid property." };
   }
 
   try {
     const result = await prisma.property.updateMany({
       where: {
         id: propertyId,
-        ownerId: owner.id,
+        ownerId: auth.user.id,
         caretakerId: { not: null },
       },
-      data: {
-        caretakerId: null,
-      },
+      data: { caretakerId: null },
     });
 
     if (result.count !== 1) {
@@ -171,23 +161,22 @@ export async function resendInvitation(
   propertyId: string,
   emailInput: string
 ): Promise<ActionResult> {
-  const owner = await getCurrentUser();
+  const auth = await requireVerifiedUser();
 
-  if (!owner || owner.role !== "OWNER") {
+  if (!auth.success || auth.user.role !== "OWNER") {
     return {
       success: false,
-      error: "Only owners can resend invitations.",
+      error: "Only verified owners can resend invitations.",
     };
   }
+
+  const owner = auth.user;
 
   if (
     typeof propertyId !== "string" ||
     typeof emailInput !== "string"
   ) {
-    return {
-      success: false,
-      error: "Invalid invitation details.",
-    };
+    return { success: false, error: "Invalid invitation details." };
   }
 
   const email = emailInput.trim().toLowerCase();
@@ -196,10 +185,7 @@ export async function resendInvitation(
     !propertyId.trim() ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   ) {
-    return {
-      success: false,
-      error: "Invalid property or email.",
-    };
+    return { success: false, error: "Invalid property or email." };
   }
 
   const property = await prisma.property.findFirst({
@@ -207,9 +193,7 @@ export async function resendInvitation(
       id: propertyId,
       ownerId: owner.id,
     },
-    select: {
-      caretakerId: true,
-    },
+    select: { caretakerId: true },
   });
 
   if (!property || property.caretakerId) {
@@ -226,16 +210,11 @@ export async function resendInvitation(
       status: "PENDING",
       expiresAt: { gt: new Date() },
     },
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: { createdAt: "desc" },
   });
 
   if (!invitation) {
-    return {
-      success: false,
-      error: "No active invitation found.",
-    };
+    return { success: false, error: "No active invitation found." };
   }
 
   const now = new Date();
@@ -285,19 +264,11 @@ export async function resendInvitation(
   }
 
   const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
 
-  const tokenHash = createHash("sha256")
-    .update(rawToken)
-    .digest("hex");
-
-  const invitationUrl = new URL(
-    `/invite/${rawToken}`,
-    baseUrl
-  ).toString();
+  const invitationUrl = new URL(`/invite/${rawToken}`, baseUrl).toString();
 
   try {
-    // Conditional update prevents concurrent resend attempts
-    // from successfully rotating the same token.
     const updated = await prisma.invitation.updateMany({
       where: {
         id: invitation.id,
@@ -329,10 +300,7 @@ export async function resendInvitation(
     }
 
     try {
-      await sendCaretakerInvitationEmail(
-        email,
-        invitationUrl
-      );
+      await sendCaretakerInvitationEmail(email, invitationUrl);
     } catch {
       return {
         success: false,
@@ -346,9 +314,7 @@ export async function resendInvitation(
         id: invitation.id,
         tokenHash,
       },
-      data: {
-        emailSentAt: new Date(),
-      },
+      data: { emailSentAt: new Date() },
     });
 
     return {

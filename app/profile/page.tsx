@@ -1,17 +1,19 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "../../lib/session";
+import { requireVerifiedUser } from "../../lib/session";
 import ProfileForm from "./ProfileForm";
 
 export default async function ProfilePage() {
-  const user = await getCurrentUser();
+ const auth = await requireVerifiedUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+if (!auth.success) {
+  redirect("/login");
+}
 
-  if (user.role !== "OWNER") {
-    redirect("/caretaker/dashboard");
-  }
+const user = auth.user;
+
+if (user.role !== "OWNER") {
+  redirect("/caretaker/dashboard");
+}
 
   return (
     <main className="min-h-screen bg-[#F7F6F3] flex items-center justify-center px-6 py-10">

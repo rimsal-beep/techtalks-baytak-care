@@ -57,6 +57,12 @@
   transform: rotate(180deg);
 }
 
+.edit {
+  right: 16px;
+  left: auto;
+  padding: 7px 13px;
+}
+
 .heroInfo {
   position: absolute;
   right: 0;

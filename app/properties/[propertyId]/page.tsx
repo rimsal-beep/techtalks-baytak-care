@@ -255,6 +255,10 @@ export default async function PropertyDetailsPage({
           Properties
         </Link>
 
+        <Link href={`${base}/edit`} className={`${s.back} ${s.edit}`}>
+          Edit Property
+        </Link>
+
         <div className={s.heroInfo}>
           <div>
             <h1 className={s.heroTitle}>{property.address}</h1>

@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -24,6 +25,28 @@ type InviteCaretakerResult =
   | { success: false; error: string };
 
 const INVITATION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+function validatePropertyDetails(input: CreatePropertyInput) {
+  const address =
+    typeof input?.address === "string"
+      ? input.address.trim()
+      : "";
+
+  const city =
+    typeof input?.city === "string"
+      ? input.city.trim() || null
+      : null;
+
+  if (!address) {
+    return { success: false as const, error: "Address is required." };
+  }
+
+  if (address.length > 200 || (city && city.length > 100)) {
+    return { success: false as const, error: "Address or city is too long." };
+  }
+
+  return { success: true as const, address, city };
+}
 
 // Only used to choose which property to open first.
 // This is NOT an authorization check.
@@ -283,29 +306,9 @@ export async function inviteCaretaker(
 export async function createProperty(
   input: CreatePropertyInput
 ): Promise<CreatePropertyResult> {
-  const address =
-    typeof input?.address === "string"
-      ? input.address.trim()
-      : "";
-
-  const city =
-    typeof input?.city === "string"
-      ? input.city.trim() || null
-      : null;
-
-  if (!address) {
-    return {
-      success: false,
-      error: "Address is required.",
-    };
-  }
-
-  if (address.length > 200 || (city && city.length > 100)) {
-    return {
-      success: false,
-      error: "Address or city is too long.",
-    };
-  }
+  const details = validatePropertyDetails(input);
+  if (!details.success) return details;
+  const { address, city } = details;
 
   const a = await requireUser(["OWNER"]);
 
@@ -340,4 +343,39 @@ export async function createProperty(
       error: "Failed to create property.",
     };
   }
+}
+
+export async function updateProperty(
+  propertyId: string,
+  input: CreatePropertyInput
+): Promise<{ success: true } | { success: false; error: string }> {
+  const a = await requireOwnerOfProperty(propertyId);
+  if (!a.ok) return { success: false, error: a.error };
+
+  const details = validatePropertyDetails(input);
+  if (!details.success) return details;
+
+  try {
+    const updated = await prisma.property.updateMany({
+      where: { id: a.property.id, ownerId: a.user.id },
+      // Never pass the browser's input object to Prisma.
+      data: { address: details.address, city: details.city },
+    });
+
+    if (updated.count !== 1) {
+      return { success: false, error: "Not found." };
+    }
+  } catch (error) {
+    console.error("Failed to update property:", error);
+    return { success: false, error: "Failed to update property." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/properties");
+  revalidatePath(`/properties/${a.property.id}`, "layout");
+  revalidatePath("/requests", "layout");
+  revalidatePath("/caretaker/dashboard", "layout");
+  revalidatePath("/activity");
+
+  return { success: true };
 }

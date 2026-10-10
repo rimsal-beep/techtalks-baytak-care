@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { completeChecklistItem } from "@/app/actions/maintenance";
+import { completeChecklistItem, undoChecklistItem } from "@/app/actions/maintenance";
 import { CHECKLIST_ITEMS } from "@/lib/checklistItems";
 import styles from "./Caretaker.module.css";
 import { CHECKLIST_ICONS, Icon, Ring } from "./parts";
 
-type Done = { text: string; at: string | null }; // `at` is an ISO date string
+type Done = { id: string; undoToken: string; text: string; at: string | null }; // `at` is an ISO date string
 
 type Props = {
   propertyId: string;
@@ -31,7 +31,10 @@ function when(iso: string | null) {
 
 export default function Checklist({ propertyId, propertyName, ownerFirst, initialDone }: Props) {
   const router = useRouter();
-  const [done, setDone] = useState<Done[]>(initialDone);
+  // Server props remain authoritative after refresh, including new undo tokens.
+  const done = initialDone;
+  const [isPending, startTransition] = useTransition();
+  const submitting = useRef(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -39,18 +42,28 @@ export default function Checklist({ propertyId, propertyName, ownerFirst, initia
   const count = CHECKLIST_ITEMS.filter((t) => done.some((d) => d.text === t)).length;
   const full = count === total;
 
-  async function handleCheck(text: string) {
-    if (loading) return; // one tick at a time, so a double click does nothing
+  function handleCheck(text: string, entry?: Done) {
+    if (submitting.current || isPending) return;
+    submitting.current = true; // also blocks clicks before React renders pending
     setError("");
     setLoading(text);
-    const result = await completeChecklistItem({ propertyId, text });
-    if (result.success) {
-      setDone((cur) => [...cur, { text, at: new Date().toISOString() }]);
-      router.refresh(); // updates the badges in the sidebar
-    } else {
-      setError(result.error ?? "Could not save this check. Please try again.");
-    }
-    setLoading(null);
+
+    startTransition(async () => {
+      try {
+        const result = entry
+          ? await undoChecklistItem({ propertyId, itemId: entry.id, text, undoToken: entry.undoToken })
+          : await completeChecklistItem({ propertyId, text });
+        if (result.success) {
+          router.refresh(); // refreshes completion metadata, progress and sidebar badges
+        } else {
+          setError(result.error ?? "Could not save this check. Please try again.");
+        }
+      } catch {
+        setError("Could not save this check. Please try again.");
+      } finally {
+        submitting.current = false;
+      }
+    });
   }
 
   return (
@@ -72,15 +85,15 @@ export default function Checklist({ propertyId, propertyName, ownerFirst, initia
       <ul className={styles.items}>
         {CHECKLIST_ITEMS.map((text, i) => {
           const entry = done.find((d) => d.text === text);
-          const isLoading = loading === text;
+          const isLoading = isPending && loading === text;
           return (
-            <li key={text}>
+            <li key={text} className={styles.checklistRow}>
               <button
                 type="button"
                 role="checkbox"
                 aria-checked={!!entry}
                 className={`${styles.item} ${entry ? styles.ticked : ""}`}
-                disabled={!!entry || loading !== null}
+                disabled={!!entry || isPending}
                 onClick={() => handleCheck(text)}
               >
                 <span className={styles.cb}>{isLoading ? <span className={styles.spin} /> : tick}</span>
@@ -92,6 +105,18 @@ export default function Checklist({ propertyId, propertyName, ownerFirst, initia
                   <small>{entry ? when(entry.at) : "Not checked yet"}</small>
                 </span>
               </button>
+              {entry && (
+                <button
+                  type="button"
+                  className={styles.checklistUndo}
+                  disabled={isPending}
+                  aria-label={`Undo ${text}`}
+                  aria-busy={isPending && isLoading}
+                  onClick={() => handleCheck(text, entry)}
+                >
+                  {isPending && isLoading ? "Undoing…" : "Undo"}
+                </button>
+              )}
             </li>
           );
         })}

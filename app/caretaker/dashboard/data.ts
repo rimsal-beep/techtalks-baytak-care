@@ -2,6 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { getChecklistMonthRange } from "@/lib/checklistUndo";
 import { safeUrl } from "@/lib/safeUrl";
 
 /**
@@ -15,11 +16,7 @@ export const getCaretakerData = cache(async () => {
   if (!user) redirect("/login");
   if (user.role !== "CARETAKER") redirect("/");
 
-  const startOfMonth = new Date(
-    new Date().getFullYear(),
-    new Date().getMonth(),
-    1
-  );
+  const { monthStart, nextMonthStart } = getChecklistMonthRange();
 
   const properties = await prisma.property.findMany({
     where: { caretakerId: user.id },
@@ -32,11 +29,16 @@ export const getCaretakerData = cache(async () => {
       checklistItems: {
         where: {
           completed: true,
-          completedAt: { gte: startOfMonth },
+          completedAt: { gte: monthStart, lt: nextMonthStart },
         },
         select: {
+          id: true,
+          propertyId: true,
           text: true,
+          completed: true,
           completedAt: true,
+          completedById: true,
+          updatedAt: true,
         },
       },
     },

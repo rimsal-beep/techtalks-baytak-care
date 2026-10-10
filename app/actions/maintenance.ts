@@ -2,7 +2,9 @@
 
 import { prisma } from "../../lib/prisma";
 import { isChecklistItemText } from "../../lib/checklistItems";
-import { requirePropertyMember, requireAssignedCaretaker } from "@/lib/authz";
+import { requirePropertyMember, requireAssignedCaretaker, isId } from "@/lib/authz";
+import { getChecklistMonthRange, matchesChecklistUndoToken } from "@/lib/checklistUndo";
+import { revalidatePath } from "next/cache";
 import { saveUpload } from "@/lib/uploads";
 
 const REQUEST_TYPES = [
@@ -206,5 +208,84 @@ export async function completeChecklistItem(
     console.error("Failed to complete checklist item:", error);
 
     return fail("Failed to complete checklist item.");
+  }
+}
+
+type UndoChecklistItemInput = {
+  propertyId: string;
+  itemId: string;
+  text: string;
+  undoToken: string;
+};
+
+export async function undoChecklistItem(input: UndoChecklistItemInput) {
+  const checklistText = text(input?.text);
+  if (!isChecklistItemText(checklistText)) return fail("Invalid checklist item.");
+  if (!isId(input?.itemId)) return fail("Invalid checklist item.");
+
+  const a = await requireAssignedCaretaker(input?.propertyId);
+  if (!a.ok) return fail(a.error);
+
+  const { monthStart, nextMonthStart } = getChecklistMonthRange();
+  const changed = "Checklist item changed or is not completed this month. Refresh and try again.";
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const item = await tx.checklistItem.findFirst({
+        where: {
+          id: input.itemId,
+          propertyId: a.property.id,
+          text: checklistText,
+          completed: true,
+          completedAt: { gte: monthStart, lt: nextMonthStart },
+          property: { caretakerId: a.user.id },
+        },
+      });
+
+      if (!item || !matchesChecklistUndoToken(input?.undoToken, item)) {
+        return fail(changed);
+      }
+
+      // Compare the server-read snapshot again at the write, so concurrent
+      // undo/re-completion or reassignment cannot clear a different completion.
+      const updated = await tx.checklistItem.updateMany({
+        where: {
+          id: item.id,
+          propertyId: a.property.id,
+          text: checklistText,
+          completed: true,
+          completedAt: { equals: item.completedAt, gte: monthStart, lt: nextMonthStart },
+          completedById: item.completedById,
+          updatedAt: item.updatedAt,
+          property: { caretakerId: a.user.id },
+        },
+        data: { completed: false, completedById: null, completedAt: null },
+      });
+
+      if (updated.count !== 1) return fail(changed);
+
+      await tx.activityLog.create({
+        data: {
+          action: `Checklist undone: ${checklistText}`,
+          performedById: a.user.id,
+          maintenanceRequestId: null,
+          propertyId: a.property.id,
+        },
+      });
+
+      return { success: true as const };
+    });
+
+    if (result.success) {
+      revalidatePath("/caretaker/dashboard", "layout");
+      revalidatePath(`/properties/${a.property.id}`);
+      revalidatePath("/properties");
+      revalidatePath("/");
+      revalidatePath("/activity");
+    }
+    return result;
+  } catch (error) {
+    console.error("Failed to undo checklist item:", error);
+    return fail("Failed to undo checklist item. Please try again.");
   }
 }

@@ -4,7 +4,8 @@ export type RequestStatus =
   | "APPROVED"
   | "IN_PROGRESS"
   | "COMPLETED"
-  | "REJECTED";
+  | "REJECTED"
+  | "CANCELLED";
 
 /** label + which pill colour to use. */
 export const STATUS: Record<string, { label: string; tone: "wait" | "ok" | "prog" | "done" | "no" }> = {
@@ -14,6 +15,7 @@ export const STATUS: Record<string, { label: string; tone: "wait" | "ok" | "prog
   IN_PROGRESS: { label: "In progress", tone: "prog" },
   COMPLETED: { label: "Completed", tone: "done" },
   REJECTED: { label: "Declined", tone: "no" },
+  CANCELLED: { label: "Cancelled", tone: "no" },
 };
 
 /** The filter tabs on the Requests page. `key` is what goes in ?status= */

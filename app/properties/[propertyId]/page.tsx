@@ -6,6 +6,7 @@ import Link from "next/link";
 import DashboardLayout from "@/app/Components/DashBoardCom/DashBoardLayout";
 import PropertyCaretakerInvite from "@/app/View/PropertyCaretakerInvite";
 import ApprovalActions from "@/app/requests/[requestId]/ApprovalActions";
+import OwnerRequestActions from "@/app/requests/[requestId]/OwnerRequestActions";
 import { Icon, PropertyArt } from "../PropertyUI";
 import {
   CHECKLIST_ITEMS,
@@ -16,6 +17,7 @@ import {
   summarizeRequests,
 } from "../propertyHelpers";
 import s from "./PropertyPage.module.css";
+import DeletePropertyButton from "./DeletePropertyButton";
 
 const STATUS_LABEL: Record<string, string> = {
   REPORTED: "Reported",
@@ -24,6 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: "Rejected",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 const STATUS_CLASS: Record<string, string> = {
@@ -33,6 +36,7 @@ const STATUS_CLASS: Record<string, string> = {
   REJECTED: s.chipDanger,
   IN_PROGRESS: s.chipWarning,
   COMPLETED: s.chipSuccess,
+  CANCELLED: s.chipDanger,
 };
 
 const PILL_TONE = {
@@ -68,6 +72,7 @@ const RESULT_TEXT: Record<string, string> = {
   IN_PROGRESS: "Work in progress",
   COMPLETED: "Completed",
   REJECTED: "Declined",
+  CANCELLED: "Cancelled. No work should be started.",
 };
 
 const niceType = (value: string) => value.charAt(0) + value.slice(1).toLowerCase();
@@ -119,6 +124,7 @@ export default async function PropertyDetailsPage({
     where: {
       id: propertyId,
       ownerId: user.id,
+      deletedAt: null,
     },
     select: {
       id: true,
@@ -255,6 +261,10 @@ export default async function PropertyDetailsPage({
           Properties
         </Link>
 
+        <Link href={`${base}/edit`} className={`${s.back} ${s.edit}`}>
+          Edit Property
+        </Link>
+
         <div className={s.heroInfo}>
           <div>
             <h1 className={s.heroTitle}>{property.address}</h1>
@@ -281,6 +291,8 @@ export default async function PropertyDetailsPage({
           </div>
         </div>
       </section>
+
+      <DeletePropertyButton propertyId={property.id} />
 
       {/* ---------- tabs ---------- */}
       <nav className={s.tabs} aria-label="Property sections">
@@ -693,7 +705,7 @@ export default async function PropertyDetailsPage({
                   </div>
                 )}
 
-                <ol className={s.steps}>
+                {selected.status !== "CANCELLED" && <ol className={s.steps}>
                   {STEPS.map((label, index) => {
                     const current = stepIndex(selected.status);
                     const declined = selected.status === "REJECTED" && index === 1;
@@ -708,7 +720,7 @@ export default async function PropertyDetailsPage({
                       </li>
                     );
                   })}
-                </ol>
+                </ol>}
 
                 {(selected.beforePhotoUrls.length > 0 || selected.afterPhotoUrls.length > 0) && (
                   <div className={s.panelBlock}>
@@ -768,7 +780,10 @@ export default async function PropertyDetailsPage({
 
             <div className={s.panelFoot}>
               {selected.status === "PENDING_APPROVAL" ? (
-                <ApprovalActions requestId={selected.id} />
+                <div>
+                  <ApprovalActions requestId={selected.id} />
+                  <OwnerRequestActions requestId={selected.id} />
+                </div>
               ) : (
                 <span className={s.result}>{RESULT_TEXT[selected.status] ?? ""}</span>
               )}

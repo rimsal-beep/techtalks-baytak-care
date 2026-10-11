@@ -1103,6 +1103,30 @@
   gap: 8px;
   max-width: 760px;
 }
+.checklistRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.checklistRow .item {
+  flex: 1;
+  min-width: 0;
+}
+.checklistUndo {
+  flex: none;
+  padding: 10px;
+  border-radius: 10px;
+  color: var(--navy);
+  background: var(--paper);
+  font-size: 13px;
+}
+.checklistUndo:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.checklistUndo:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
 .item {
   display: flex;
   align-items: center;

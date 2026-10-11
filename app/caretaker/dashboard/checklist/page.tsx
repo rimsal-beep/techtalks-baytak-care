@@ -1,3 +1,4 @@
+import { checklistUndoToken } from "@/lib/checklistUndo";
 import styles from "../Caretaker.module.css";
 import PageHead from "../PageHead";
 import NoProperty from "../NoProperty";
@@ -36,6 +37,8 @@ export default async function ChecklistPage({
           propertyName={property.address}
           ownerFirst={ownerFirst}
           initialDone={property.checklistItems.map((i) => ({
+            id: i.id,
+            undoToken: checklistUndoToken(i),
             text: i.text,
             at: i.completedAt ? i.completedAt.toISOString() : null,
           }))}

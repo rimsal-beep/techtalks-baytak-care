@@ -98,8 +98,8 @@ export async function login(input: LoginInput) {
   const property = await prisma.property.findFirst({
     where:
       user.role === "OWNER"
-        ? { ownerId: user.id }
-        : { caretakerId: user.id },
+        ? { ownerId: user.id, deletedAt: null }
+        : { caretakerId: user.id, deletedAt: null },
     select: { id: true },
   });
 

@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: "Rejected",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 export default async function RequestsPage() {
@@ -29,6 +30,7 @@ export default async function RequestsPage() {
     where: {
       property: {
         ownerId: user.id,
+        deletedAt: null,
       },
     },
     include: {

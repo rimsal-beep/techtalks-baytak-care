@@ -2,24 +2,13 @@
 
 import { prisma } from "../../lib/prisma";
 import { isChecklistItemText } from "../../lib/checklistItems";
+import { requirePropertyMember, requireAssignedCaretaker, isId, lockActiveProperty } from "@/lib/authz";
+import { getChecklistMonthRange, matchesChecklistUndoToken } from "@/lib/checklistUndo";
+import { revalidatePath } from "next/cache";
 import { isUniqueConstraintError, normalizeIdempotencyKey } from "@/lib/idempotency";
-import { requirePropertyMember, requireAssignedCaretaker } from "@/lib/authz";
 import { saveUpload } from "@/lib/uploads";
 
-const REQUEST_TYPES = [
-  "PLUMBING",
-  "ELECTRICAL",
-  "HVAC",
-  "STRUCTURAL",
-  "APPLIANCE",
-  "PAINTING",
-  "CLEANING",
-  "OTHER",
-] as const;
-type RequestType = (typeof REQUEST_TYPES)[number];
-
-const CURRENCIES = ["USD", "LBP"] as const;
-type Currency = (typeof CURRENCIES)[number];
+import { validateMaintenanceRequestFields } from "@/lib/maintenanceRequestFields";
 
 const fail = (error: string) => ({ success: false as const, error });
 
@@ -41,40 +30,13 @@ type CreateMaintenanceRequestInput = {
 export async function createMaintenanceRequest(
   input: CreateMaintenanceRequestInput
 ) {
-  const title = text(input?.title);
-  const requestType = text(input?.requestType);
-  const description = text(input?.description);
-  const estimateNote = text(input?.estimateNote);
+  const fields = validateMaintenanceRequestFields(input);
+  if (!fields.success) return fields;
+  const { title, requestType, description, estimateNote, currency, estimatedCost } = fields.data;
+
   const idempotencyKey = normalizeIdempotencyKey(input?.idempotencyKey);
   if (!idempotencyKey) {
     return fail("A valid idempotency key is required. Refresh the form and try again.");
-  }
-
-
-  if (!title) return fail("Title is required.");
-  if (title.length > 120) return fail("Title is too long.");
-
-  if (!REQUEST_TYPES.includes(requestType as RequestType)) {
-    return fail("Choose a valid request type.");
-  }
-
-  if (description.length > 2000) return fail("Description is too long.");
-  if (estimateNote.length > 1000) return fail("Estimate note is too long.");
-
-  const currency = input?.currency ?? "USD";
-  if (!CURRENCIES.includes(currency as Currency)) {
-    return fail("Choose a valid currency.");
-  }
-
-  const estimatedCost = input?.estimatedCost ?? null;
-  if (
-    estimatedCost !== null &&
-    (typeof estimatedCost !== "number" ||
-      !Number.isFinite(estimatedCost) ||
-      estimatedCost < 0 ||
-      estimatedCost > 1_000_000_000)
-  ) {
-    return fail("Estimated cost must be a valid non-negative number.");
   }
 
   const issuePhotos = Array.isArray(input?.issuePhotos)
@@ -107,22 +69,24 @@ export async function createMaintenanceRequest(
       issuePhotoUrls.push(saved.url);
     }
 
-    const createdRequest = await prisma.maintenanceRequest.create({
-      data: {
-        title,
-        requestType: requestType as RequestType,
-        description: description || null,
-        status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
-        estimatedCost,
-        currency: currency as Currency,
-        estimateNote: estimateNote || null,
-        issuePhotoUrls,
-        reportedById: a.user.id,
-        propertyId: a.property.id,
-        idempotencyKey,
-      },
+    const createdRequest = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
+      return tx.maintenanceRequest.create({
+        data: {
+          title,
+          requestType,
+          description: description || null,
+          status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
+          estimatedCost,
+          currency,
+          estimateNote: estimateNote || null,
+          issuePhotoUrls,
+          reportedById: a.user.id,
+          propertyId: a.property.id,
+          idempotencyKey,
+        },
+      });
     });
-
     return { success: true as const, duplicate: false, requestId: createdRequest.id };
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -168,6 +132,7 @@ export async function completeChecklistItem(
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
       const now = new Date();
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
@@ -222,5 +187,85 @@ export async function completeChecklistItem(
     console.error("Failed to complete checklist item:", error);
 
     return fail("Failed to complete checklist item.");
+  }
+}
+
+type UndoChecklistItemInput = {
+  propertyId: string;
+  itemId: string;
+  text: string;
+  undoToken: string;
+};
+
+export async function undoChecklistItem(input: UndoChecklistItemInput) {
+  const checklistText = text(input?.text);
+  if (!isChecklistItemText(checklistText)) return fail("Invalid checklist item.");
+  if (!isId(input?.itemId)) return fail("Invalid checklist item.");
+
+  const a = await requireAssignedCaretaker(input?.propertyId);
+  if (!a.ok) return fail(a.error);
+
+  const { monthStart, nextMonthStart } = getChecklistMonthRange();
+  const changed = "Checklist item changed or is not completed this month. Refresh and try again.";
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
+      const item = await tx.checklistItem.findFirst({
+        where: {
+          id: input.itemId,
+          propertyId: a.property.id,
+          text: checklistText,
+          completed: true,
+          completedAt: { gte: monthStart, lt: nextMonthStart },
+          property: { caretakerId: a.user.id, deletedAt: null },
+        },
+      });
+
+      if (!item || !matchesChecklistUndoToken(input?.undoToken, item)) {
+        return fail(changed);
+      }
+
+      // Compare the server-read snapshot again at the write, so concurrent
+      // undo/re-completion or reassignment cannot clear a different completion.
+      const updated = await tx.checklistItem.updateMany({
+        where: {
+          id: item.id,
+          propertyId: a.property.id,
+          text: checklistText,
+          completed: true,
+          completedAt: { equals: item.completedAt, gte: monthStart, lt: nextMonthStart },
+          completedById: item.completedById,
+          updatedAt: item.updatedAt,
+          property: { caretakerId: a.user.id, deletedAt: null },
+        },
+        data: { completed: false, completedById: null, completedAt: null },
+      });
+
+      if (updated.count !== 1) return fail(changed);
+
+      await tx.activityLog.create({
+        data: {
+          action: `Checklist undone: ${checklistText}`,
+          performedById: a.user.id,
+          maintenanceRequestId: null,
+          propertyId: a.property.id,
+        },
+      });
+
+      return { success: true as const };
+    });
+
+    if (result.success) {
+      revalidatePath("/caretaker/dashboard", "layout");
+      revalidatePath(`/properties/${a.property.id}`);
+      revalidatePath("/properties");
+      revalidatePath("/");
+      revalidatePath("/activity");
+    }
+    return result;
+  } catch (error) {
+    console.error("Failed to undo checklist item:", error);
+    return fail("Failed to undo checklist item. Please try again.");
   }
 }

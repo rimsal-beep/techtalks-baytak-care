@@ -22,6 +22,7 @@ export default async function PendingApprovalsPage() {
       status: "PENDING_APPROVAL",
       property: {
         ownerId: user.id,
+        deletedAt: null,
       },
     },
     select: {

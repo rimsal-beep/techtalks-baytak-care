@@ -13,7 +13,7 @@ export default async function NewPropertyPage() {
 
   if (user.role !== "OWNER") {
     const assignedProperty = await prisma.property.findFirst({
-      where: { caretakerId: user.id },
+      where: { caretakerId: user.id, deletedAt: null },
       select: { id: true },
     });
     redirect(assignedProperty ? "/requests/new" : "/caretaker/dashboard");

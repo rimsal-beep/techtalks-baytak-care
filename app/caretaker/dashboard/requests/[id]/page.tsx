@@ -42,7 +42,7 @@ export default async function RequestPage({
 
   // Only requests of properties that belong to THIS caretaker can be opened.
     const found = await prisma.maintenanceRequest.findFirst({
-    where: { id, property: { caretakerId: user.id } },
+    where: { id, property: { caretakerId: user.id, deletedAt: null } },
     select: {
       id: true,
       title: true,
@@ -99,6 +99,7 @@ export default async function RequestPage({
   const inProgress = r.status === "IN_PROGRESS";
   const completed = r.status === "COMPLETED";
   const declined = r.status === "REJECTED";
+  const cancelled = r.status === "CANCELLED";
   const byMe = r.reportedBy.id === user.id;
 
   const banner: {
@@ -143,7 +144,12 @@ export default async function RequestPage({
                 actual !== null ? `Final cost ${money(actual, cur)}. ` : ""
               }${owner} has the photos and receipt.`,
             }
-          : {
+          : cancelled ? {
+              tone: d.nbNo,
+              icon: "x",
+              title: `${owner} cancelled this request`,
+              text: "No work should be started. The request and its history have been kept.",
+            } : {
               tone: d.nbNo,
               icon: "x",
               title: `${owner} declined this request`,
@@ -483,7 +489,7 @@ export default async function RequestPage({
             )}
           </section>
 
-          <section className={d.pcard}>
+          {!cancelled && <section className={d.pcard}>
             <span className={styles.mono}>Progress</span>
 
             <ol
@@ -516,7 +522,7 @@ export default async function RequestPage({
                 );
               })}
             </ol>
-          </section>
+          </section>}
         </aside>
       </div>
     </div>

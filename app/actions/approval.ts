@@ -6,18 +6,20 @@ import { requireRequestAccess } from "@/lib/authz";
 import { REJECTION_REASON_MAX_LENGTH } from "@/lib/rejectionReason";
 
 export async function approveRequest(requestId: string) {
-  // logged in + OWNER + the request belongs to one of this owner's properties
   const a = await requireRequestAccess(requestId, "OWNER");
   if (!a.ok) return { success: false, error: a.error };
+
   const { user, request } = a;
 
   if (request.status !== "PENDING_APPROVAL") {
-    return { success: false, error: "Only requests waiting for approval can be approved." };
+    return {
+      success: false,
+      error: "Only requests waiting for approval can be approved.",
+    };
   }
 
   try {
     await prisma.$transaction(async (tx) => {
-      // status and owner are in the where again, so a second click or a second tab cannot slip through
       const updated = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
@@ -32,7 +34,10 @@ export async function approveRequest(requestId: string) {
           rejectionReason: null,
         },
       });
-      if (updated.count !== 1) throw new Error("DECISION_CONFLICT");
+
+      if (updated.count !== 1) {
+        throw new Error("DECISION_CONFLICT");
+      }
 
       await tx.activityLog.create({
         data: {
@@ -47,26 +52,35 @@ export async function approveRequest(requestId: string) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "DECISION_CONFLICT") {
-      return { success: false, error: "This request has already been decided." };
+      return {
+        success: false,
+        error: "This request has already been decided.",
+      };
     }
+
     console.error("Failed to approve request:", error);
-    return { success: false, error: "Could not approve the request. Try again." };
+    return {
+      success: false,
+      error: "Could not approve the request. Try again.",
+    };
   }
 
   revalidatePath(`/requests/${request.id}`);
   revalidatePath("/caretaker/dashboard", "layout");
+
   return { success: true };
 }
 
 export async function rejectRequest(requestId: string, reason: string) {
   const a = await requireRequestAccess(requestId, "OWNER");
   if (!a.ok) return { success: false, error: a.error };
+
   const { user, request } = a;
 
-  // the reason comes from the browser: make sure it really is text
   if (typeof reason !== "string") {
     return { success: false, error: "Rejection reason is required." };
   }
+
   const rejectionReason = reason.trim();
 
   if (!rejectionReason) {
@@ -81,7 +95,10 @@ export async function rejectRequest(requestId: string, reason: string) {
   }
 
   if (request.status !== "PENDING_APPROVAL") {
-    return { success: false, error: "Only requests waiting for approval can be rejected." };
+    return {
+      success: false,
+      error: "Only requests waiting for approval can be rejected.",
+    };
   }
 
   try {
@@ -100,7 +117,10 @@ export async function rejectRequest(requestId: string, reason: string) {
           approvedAt: null,
         },
       });
-      if (updated.count !== 1) throw new Error("DECISION_CONFLICT");
+
+      if (updated.count !== 1) {
+        throw new Error("DECISION_CONFLICT");
+      }
 
       await tx.activityLog.create({
         data: {
@@ -115,13 +135,21 @@ export async function rejectRequest(requestId: string, reason: string) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "DECISION_CONFLICT") {
-      return { success: false, error: "This request has already been decided." };
+      return {
+        success: false,
+        error: "This request has already been decided.",
+      };
     }
+
     console.error("Failed to reject request:", error);
-    return { success: false, error: "Could not reject the request. Try again." };
+    return {
+      success: false,
+      error: "Could not reject the request. Try again.",
+    };
   }
 
   revalidatePath(`/requests/${request.id}`);
   revalidatePath("/caretaker/dashboard", "layout");
+
   return { success: true };
 }

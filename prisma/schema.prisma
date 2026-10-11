@@ -1,6 +1,8 @@
+
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider        = "prisma-client"
+  output          = "../generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -77,6 +79,8 @@ model Invitation {
   invitedById String
   invitedBy   User @relation(fields: [invitedById], references: [id])
 
+  // Only one pending invitation per property and normalized email.
+  @@unique([propertyId, email], where: { status: "PENDING" }, map: "Invitation_one_pending_per_property_email_key")
   @@index([propertyId])
   @@index([status])
   @@index([email, status])
@@ -100,6 +104,9 @@ model MaintenanceRequest {
   issuePhotoUrls String[]
   reportedById   String
   reportedBy     User     @relation("ReportedBy", fields: [reportedById], references: [id])
+
+  // Unique key for each submission attempt by its creator.
+  idempotencyKey String
 
   estimatedCost Decimal? @db.Decimal(10, 2)
   currency      Currency @default(USD)
@@ -128,6 +135,8 @@ model MaintenanceRequest {
 
   activityLogs ActivityLog[]
 
+  // reportedById serves as this project's creator userId.
+  @@unique([reportedById, idempotencyKey])
   @@index([propertyId])
   @@index([status])
 }
@@ -175,7 +184,7 @@ model ActivityLog {
   performedBy   User   @relation(fields: [performedById], references: [id])
 
   maintenanceRequestId String?
-  maintenanceRequest     MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+  maintenanceRequest   MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
 
   propertyId String?
   property   Property? @relation(fields: [propertyId], references: [id])
@@ -196,9 +205,14 @@ model ChecklistItem {
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
 
+  // YYYY-MM format, for example 2026-10.
+  monthKey String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // One row per property, checklist item, and month.
+  @@unique([propertyId, text, monthKey])
   @@index([propertyId])
   @@index([completedById])
 }

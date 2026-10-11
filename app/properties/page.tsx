@@ -29,12 +29,15 @@ export default async function PropertiesPage() {
     redirect("/login");
   }
 
-  if (user.role === "CARETAKER") {
-    redirect("/caretaker/dashboard");
-  }
   if (user.role !== "OWNER") {
     redirect("/caretaker/dashboard");
   }
+
+  const checklistMonthDate = new Date();
+  const checklistMonthKey = `${checklistMonthDate.getFullYear()}-${String(
+    checklistMonthDate.getMonth() + 1
+  ).padStart(2, "0")}`;
+
   const properties = await prisma.property.findMany({
     where: {
       ownerId: user.id,
@@ -55,6 +58,7 @@ export default async function PropertiesPage() {
       checklistItems: {
         where: {
           completed: true,
+          monthKey: checklistMonthKey,
         },
         select: {
           text: true,
@@ -94,9 +98,15 @@ export default async function PropertiesPage() {
       ) : (
         <div className={styles.grid}>
           {properties.map((property) => {
-            const { awaiting, inProgress, open } = summarizeRequests(property.maintenanceRequests);
+            const { awaiting, inProgress, open } = summarizeRequests(
+              property.maintenanceRequests
+            );
             const checklist = checklistProgress(property.checklistItems);
-            const status = propertyStatus(Boolean(property.caretaker), awaiting, inProgress);
+            const status = propertyStatus(
+              Boolean(property.caretaker),
+              awaiting,
+              inProgress
+            );
             const lastCheck = shortDate(checklist.last);
 
             return (
@@ -151,7 +161,9 @@ export default async function PropertiesPage() {
                               : `${styles.avatar} ${styles.avatarEmpty}`
                           }
                         >
-                          {property.caretaker ? initialOf(property.caretaker.name) : "?"}
+                          {property.caretaker
+                            ? initialOf(property.caretaker.name)
+                            : "?"}
                         </span>
                         <span
                           className={
@@ -167,7 +179,13 @@ export default async function PropertiesPage() {
 
                     <div className={styles.fact}>
                       <span className={styles.label}>Last check</span>
-                      <span className={lastCheck ? styles.value : `${styles.value} ${styles.muted}`}>
+                      <span
+                        className={
+                          lastCheck
+                            ? styles.value
+                            : `${styles.value} ${styles.muted}`
+                        }
+                      >
                         {lastCheck ?? "Not yet"}
                       </span>
                     </div>
@@ -188,7 +206,9 @@ export default async function PropertiesPage() {
                 <Icon name="plus" size={20} />
               </span>
               <span className={styles.addTitle}>Add a property</span>
-              <span className={styles.addSub}>Invite a caretaker to look after it</span>
+              <span className={styles.addSub}>
+                Invite a caretaker to look after it
+              </span>
             </div>
           </Link>
         </div>

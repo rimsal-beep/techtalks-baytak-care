@@ -162,6 +162,7 @@ enum MaintenanceRequestStatus {
   REJECTED
   IN_PROGRESS
   COMPLETED
+  CANCELLED
 }
 
 model ActivityLog {

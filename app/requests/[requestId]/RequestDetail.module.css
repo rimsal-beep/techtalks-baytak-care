@@ -305,3 +305,11 @@ form.section .sectionTitle {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.ownerActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ownerActions a { text-decoration: none; }
+.cancelButton { padding: 7px 10px; border: 1px solid #b91c1c; border-radius: 7px; background: white; color: #b91c1c; font: inherit; font-size: 13px; cursor: pointer; }
+.ownerActions button:disabled { opacity: .6; cursor: not-allowed; }
+.editFields { border: 0; margin: 0 0 18px; padding: 0; min-width: 0; }
+.formField select { width: 100%; min-height: 48px; padding: 0 15px; border: 1px solid #D7D9DA; border-radius: 7px; background: white; color: #172033; font: inherit; }
+.formField select:focus-visible, .ownerActions a:focus-visible, .ownerActions button:focus-visible { outline: 2px solid #1F4E79; outline-offset: 2px; }

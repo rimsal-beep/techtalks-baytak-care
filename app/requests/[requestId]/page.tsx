@@ -6,6 +6,7 @@ import { safeUrl } from "@/lib/safeUrl";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import ApprovalActions from "./ApprovalActions";
+import OwnerRequestActions from "./OwnerRequestActions";
 import style from "@/app/Style/DashboardStyle.module.css";
 import detailStyle from "./RequestDetail.module.css";
 
@@ -16,6 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
   REJECTED: "Rejected",
   IN_PROGRESS: "In progress",
   COMPLETED: "Completed",
+  CANCELLED: "Cancelled",
 };
 
 export default async function RequestDetailPage({
@@ -99,7 +101,10 @@ export default async function RequestDetailPage({
         </div>
 
         {request.status === "PENDING_APPROVAL" && (
-          <ApprovalActions requestId={request.id} />
+          <>
+            <ApprovalActions requestId={request.id} />
+            <OwnerRequestActions requestId={request.id} />
+          </>
         )}
 
         {request.status === "REJECTED" && (

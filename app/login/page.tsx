@@ -1,12 +1,19 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { login } from "../actions/login";
 import { useRouter } from "next/navigation";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next");
+  const nextPath =
+    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
+      ? nextParam
+      : null;
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,7 +32,7 @@ export default function LoginPage() {
 
     if (response.success) {
       if (response.data?.role === "CARETAKER") {
-        router.push("/caretaker/dashboard");
+        router.push(nextPath ?? "/caretaker/dashboard");
       } else {
         router.push("/");
       }
@@ -85,8 +92,16 @@ export default function LoginPage() {
       </form>
 
       <p className={f.foot}>
-        Do not have an account? <a href="/signup">Create an account</a>
+        Do not have an account? <a href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"}>Create an account</a>
       </p>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }

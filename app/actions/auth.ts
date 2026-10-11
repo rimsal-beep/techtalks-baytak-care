@@ -1,9 +1,15 @@
+
 "use server";
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
-import { createSessionToken, getCurrentUser } from "../../lib/session";
+import {
+  createSessionToken,
+  requireVerifiedUser,
+} from "../../lib/session";
 import { cookies } from "next/headers";
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { sendVerificationEmail } from "../../lib/emailVerification";
 
 type SignupInput = {
   name: string;
@@ -27,101 +33,94 @@ type SignupResult =
       error: string;
     };
 
-const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+const nameRegex =
+  /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function signup(input: SignupInput): Promise<SignupResult> {
-  const trimmedName = input.name?.trim();
+  const trimmedName =
+    typeof input?.name === "string" ? input.name.trim() : "";
+  const email =
+    typeof input?.email === "string"
+      ? input.email.trim().toLowerCase()
+      : "";
+  const password =
+    typeof input?.password === "string" ? input.password : "";
+  const role = input?.role;
 
   if (!trimmedName) {
+    return { success: false, error: "Name is required." };
+  }
+
+  if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
-      error: "Name is required.",
+      error:
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
-  if (!nameRegex.test(trimmedName)) {
+  if (!email) {
+    return { success: false, error: "Email is required." };
+  }
+
+  if (email.length > 254 || !emailRegex.test(email)) {
+    return { success: false, error: "Enter a valid email." };
+  }
+
+  if (password.length < 8) {
     return {
       success: false,
-      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      error: "Password must be at least 8 characters.",
     };
   }
 
-  if (!input.email?.trim()) {
-    return {
-      success: false,
-      error: "Email is required.",
-    };
+  if (password.length > 128) {
+    return { success: false, error: "Password is too long." };
   }
 
-  if (!input.password || input.password.length < 6) {
-    return {
-      success: false,
-      error: "Password must be at least 6 characters.",
-    };
-  }
-
-  if (input.role !== "OWNER" && input.role !== "CARETAKER") {
-    return {
-      success: false,
-      error: "Please choose a role.",
-    };
-  }
-
-  const email = input.email.trim().toLowerCase();
-
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (existingUser) {
-    return {
-      success: false,
-      error: "An account with this email already exists.",
-    };
+  if (role !== "OWNER" && role !== "CARETAKER") {
+    return { success: false, error: "Please choose a role." };
   }
 
   try {
-    const passwordHash = await hashPassword(input.password);
+    const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
       data: {
         name: trimmedName,
         email,
         passwordHash,
-        role: input.role,
+        role,
       },
     });
 
-    if (user.role === "CARETAKER") {
-      const invitations = await prisma.invitation.findMany({
-        where: {
-          email: user.email,
-          status: "PENDING",
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true, propertyId: true },
-      });
+    if (role === "OWNER") {
+      try {
+        await sendVerificationEmail(user.id, user.email);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
 
-      if (invitations.length > 0) {
-        await prisma.$transaction([
-          ...invitations.map((invitation) =>
-            prisma.property.update({
-              where: { id: invitation.propertyId },
-              data: { caretakerId: user.id },
-            })
-          ),
-          prisma.invitation.updateMany({
-            where: {
-              id: {
-                in: invitations.map((invitation) => invitation.id),
-              },
-            },
-            data: { status: "ACCEPTED" },
-          }),
-        ]);
+        return {
+          success: false,
+          error:
+            "Your account was created, but we couldn't send the verification email. Please try the resend option.",
+        };
       }
+
+      return {
+        success: true,
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      };
     }
 
+    // BAY-71: Caretakers must accept a valid invitation.
+    // Preserve the existing caretaker signup/session behavior.
     const cookieStore = await cookies();
 
     cookieStore.set("userId", createSessionToken(user.id), {
@@ -143,34 +142,37 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   } catch (error) {
     console.error("Failed to create user:", error);
 
-    return {
-      success: false,
-      error: "Failed to create account.",
-    };
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        error: "An account with this email already exists.",
+      };
+    }
+
+    return { success: false, error: "Failed to create account." };
   }
 }
 
 type UpdateProfileResult =
-  | {
-      success: true;
-    }
-  | {
-      success: false;
-      error: string;
-    };
+  | { success: true }
+  | { success: false; error: string };
 
 export async function updateProfile(
   name: string,
   phone: string
 ): Promise<UpdateProfileResult> {
-  const user = await getCurrentUser();
+  const auth = await requireVerifiedUser();
 
-  if (!user) {
-    return {
-      success: false,
-      error: "You must be logged in.",
-    };
+  if (!auth.success) {
+    return { success: false, error: auth.error };
   }
+
+  const user = auth.user;
 
   if (user.role !== "OWNER") {
     return {
@@ -179,27 +181,34 @@ export async function updateProfile(
     };
   }
 
-  const trimmedName = name.trim();
-  const trimmedPhone = phone.trim();
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  const trimmedPhone = typeof phone === "string" ? phone.trim() : "";
 
   if (!trimmedName) {
-    return {
-      success: false,
-      error: "Name is required.",
-    };
+    return { success: false, error: "Name is required." };
   }
 
-  if (!nameRegex.test(trimmedName)) {
+  if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
-      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      error:
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
   if (!trimmedPhone) {
+    return { success: false, error: "Phone number is required." };
+  }
+
+  const parsed =
+    trimmedPhone.length <= 20
+      ? parsePhoneNumberFromString(trimmedPhone)
+      : undefined;
+
+  if (!parsed || !parsed.isValid()) {
     return {
       success: false,
-      error: "Phone number is required.",
+      error: "Please enter a valid international phone number.",
     };
   }
 
@@ -208,19 +217,13 @@ export async function updateProfile(
       where: { id: user.id },
       data: {
         name: trimmedName,
-        phone: trimmedPhone,
+        phone: parsed.number,
       },
     });
 
-    return {
-      success: true,
-    };
+    return { success: true };
   } catch (error) {
     console.error("Failed to update profile:", error);
-
-    return {
-      success: false,
-      error: "Failed to update profile.",
-    };
+    return { success: false, error: "Failed to update profile." };
   }
 }

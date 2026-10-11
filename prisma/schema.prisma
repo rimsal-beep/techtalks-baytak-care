@@ -15,9 +15,10 @@ model User {
   passwordHash String
   name         String
   phone        String?
-  role         UserRole
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role             UserRole
+emailVerifiedAt  DateTime?
+createdAt        DateTime @default(now())
+updatedAt        DateTime @updatedAt
 
   ownedProperties         Property[]           @relation("PropertyOwner")
   caretakingProperties    Property[]           @relation("PropertyCaretaker")
@@ -25,6 +26,7 @@ model User {
   approvedRequests        MaintenanceRequest[] @relation("ApprovedBy")
   activityLogs            ActivityLog[]
   sentInvitations         Invitation[]
+  emailVerificationTokens EmailVerificationToken[]
   completedChecklistItems ChecklistItem[]      @relation("ChecklistCompletedBy")
 
   @@index([role])
@@ -46,7 +48,7 @@ model Property {
   ownerId String
   owner   User   @relation("PropertyOwner", fields: [ownerId], references: [id])
 
-  caretakerId String?
+  caretakerId String? @unique
   caretaker   User?   @relation("PropertyCaretaker", fields: [caretakerId], references: [id])
 
   maintenanceRequests MaintenanceRequest[]
@@ -55,27 +57,33 @@ model Property {
   activityLogs        ActivityLog[]
 
   @@index([ownerId])
-  @@index([caretakerId])
 }
 
 model Invitation {
-  id        String           @id @default(uuid())
-  email     String
-  token     String           @unique
-  status    InvitationStatus @default(PENDING)
-  expiresAt DateTime
-  createdAt DateTime         @default(now())
+  id           String           @id @default(uuid())
+  email        String
+  tokenHash    String           @unique
+  status       InvitationStatus @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime         @default(now())
+  acceptedAt   DateTime?
+  revokedAt    DateTime?
+
+  emailAttempts Int       @default(0)
+  lastEmailAt   DateTime?
+  emailSentAt   DateTime?
 
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
 
   invitedById String
-  invitedBy   User   @relation(fields: [invitedById], references: [id])
+  invitedBy   User @relation(fields: [invitedById], references: [id])
 
   // Only one pending invitation per property and normalized email.
   @@unique([propertyId, email], where: { status: "PENDING" }, map: "Invitation_one_pending_per_property_email_key")
   @@index([propertyId])
   @@index([status])
+  @@index([email, status])
 }
 
 enum InvitationStatus {
@@ -207,4 +215,17 @@ model ChecklistItem {
   @@unique([propertyId, text, monthKey])
   @@index([propertyId])
   @@index([completedById])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }

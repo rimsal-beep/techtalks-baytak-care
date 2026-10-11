@@ -1,9 +1,11 @@
+
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { requestScope } from "@/lib/authz";
+import { safeUrl } from "@/lib/safeUrl";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import ApprovalActions from "./ApprovalActions";
-import CompletionForm from "./CompletionForm";
 import style from "@/app/Style/DashboardStyle.module.css";
 import detailStyle from "./RequestDetail.module.css";
 
@@ -29,8 +31,20 @@ export default async function RequestDetailPage({
 
   const { requestId } = await params;
 
-  const request = await prisma.maintenanceRequest.findUnique({
-    where: { id: requestId },
+  // Owners use this page. Caretakers use their own page.
+  if (user.role !== "OWNER") {
+    redirect(
+      `/caretaker/dashboard/requests/${encodeURIComponent(requestId)}`
+    );
+  }
+
+  // The owner check is inside the query.
+  // Unauthorized and missing requests both return "not found".
+  const found = await prisma.maintenanceRequest.findFirst({
+    where: {
+      id: requestId,
+      ...requestScope(user),
+    },
     include: {
       reportedBy: {
         select: {
@@ -41,24 +55,30 @@ export default async function RequestDetailPage({
         select: {
           id: true,
           address: true,
-          ownerId: true,
-          caretakerId: true,
         },
       },
     },
   });
 
-  if (!request) {
+  if (!found) {
     notFound();
   }
 
-  const isAuthorized =
-    request.property.ownerId === user.id ||
-    request.property.caretakerId === user.id;
-
-  if (!isAuthorized) {
-    redirect("/");
-  }
+  const request = {
+    ...found,
+    issuePhotoUrls: found.issuePhotoUrls
+      .map(safeUrl)
+      .filter(Boolean),
+    beforePhotoUrls: found.beforePhotoUrls
+      .map(safeUrl)
+      .filter(Boolean),
+    afterPhotoUrls: found.afterPhotoUrls
+      .map(safeUrl)
+      .filter(Boolean),
+    receiptUrl: found.receiptUrl
+      ? safeUrl(found.receiptUrl) || null
+      : null,
+  };
 
   return (
     <div className={style.dashboardShell}>
@@ -78,16 +98,18 @@ export default async function RequestDetailPage({
           </span>
         </div>
 
-        {request.status === "PENDING_APPROVAL" &&
-          request.property.ownerId === user.id && (
-            <ApprovalActions requestId={request.id} />
-          )}
+        {request.status === "PENDING_APPROVAL" && (
+          <ApprovalActions requestId={request.id} />
+        )}
 
         {request.status === "REJECTED" && (
           <section className={detailStyle.section}>
-            <h3 className={detailStyle.sectionTitle}>Rejection reason</h3>
+            <h3 className={detailStyle.sectionTitle}>
+              Rejection reason
+            </h3>
             <p className={detailStyle.rejectionReason}>
-              {request.rejectionReason?.trim() || "No rejection reason recorded."}
+              {request.rejectionReason?.trim() ||
+                "No rejection reason recorded."}
             </p>
           </section>
         )}
@@ -96,7 +118,9 @@ export default async function RequestDetailPage({
           <h3 className={detailStyle.sectionTitle}>Details</h3>
 
           <div className={detailStyle.row}>
-            <span className={detailStyle.label}>Reported by</span>
+            <span className={detailStyle.label}>
+              Reported by
+            </span>
             <span>{request.reportedBy.name}</span>
           </div>
 
@@ -106,17 +130,22 @@ export default async function RequestDetailPage({
           </div>
 
           <div className={detailStyle.row}>
-            <span className={detailStyle.label}>Description</span>
+            <span className={detailStyle.label}>
+              Description
+            </span>
             <span>{request.description || "—"}</span>
           </div>
         </section>
 
         <section className={detailStyle.section}>
-          <h3 className={detailStyle.sectionTitle}>Cost estimate</h3>
+          <h3 className={detailStyle.sectionTitle}>
+            Cost estimate
+          </h3>
 
           <div className={detailStyle.row}>
-            <span className={detailStyle.label}>Estimated cost</span>
-
+            <span className={detailStyle.label}>
+              Estimated cost
+            </span>
             <span>
               {request.estimatedCost
                 ? `${request.currency} ${request.estimatedCost}`
@@ -125,7 +154,9 @@ export default async function RequestDetailPage({
           </div>
 
           <div className={detailStyle.row}>
-            <span className={detailStyle.label}>Estimate note</span>
+            <span className={detailStyle.label}>
+              Estimate note
+            </span>
             <span>{request.estimateNote || "—"}</span>
           </div>
         </section>
@@ -134,7 +165,9 @@ export default async function RequestDetailPage({
           <h3 className={detailStyle.sectionTitle}>Photos</h3>
 
           {request.issuePhotoUrls.length === 0 ? (
-            <p className={detailStyle.muted}>No photos submitted.</p>
+            <p className={detailStyle.muted}>
+              No photos submitted.
+            </p>
           ) : (
             <div className={detailStyle.photoGrid}>
               {request.issuePhotoUrls.map((url, i) => (
@@ -154,10 +187,14 @@ export default async function RequestDetailPage({
 
         {request.status === "COMPLETED" && (
           <section className={detailStyle.section}>
-            <h3 className={detailStyle.sectionTitle}>Completed work</h3>
+            <h3 className={detailStyle.sectionTitle}>
+              Completed work
+            </h3>
 
             <div className={detailStyle.row}>
-              <span className={detailStyle.label}>Actual cost</span>
+              <span className={detailStyle.label}>
+                Actual cost
+              </span>
               <span className={detailStyle.actualCostValue}>
                 {request.actualCost != null
                   ? `${request.currency} ${request.actualCost.toFixed(2)}`
@@ -167,11 +204,22 @@ export default async function RequestDetailPage({
 
             <div className={detailStyle.comparisonGrid}>
               {[
-                { label: "BEFORE", photos: request.beforePhotoUrls ?? [] },
-                { label: "AFTER", photos: request.afterPhotoUrls ?? [] },
+                {
+                  label: "BEFORE",
+                  photos: request.beforePhotoUrls ?? [],
+                },
+                {
+                  label: "AFTER",
+                  photos: request.afterPhotoUrls ?? [],
+                },
               ].map(({ label, photos }) => (
-                <div key={label} className={detailStyle.galleryPanel}>
-                  <h4 className={detailStyle.galleryTitle}>{label}</h4>
+                <div
+                  key={label}
+                  className={detailStyle.galleryPanel}
+                >
+                  <h4 className={detailStyle.galleryTitle}>
+                    {label}
+                  </h4>
 
                   {photos.length === 0 ? (
                     <p className={detailStyle.muted}>
@@ -217,7 +265,13 @@ export default async function RequestDetailPage({
                   strokeWidth="1.7"
                   aria-hidden="true"
                 >
-                  <rect x="5" y="3" width="14" height="18" rx="2" />
+                  <rect
+                    x="5"
+                    y="3"
+                    width="14"
+                    height="18"
+                    rx="2"
+                  />
                   <path d="M9 8h6M9 12h6M9 16h4" />
                 </svg>
                 View receipt
@@ -225,12 +279,6 @@ export default async function RequestDetailPage({
             )}
           </section>
         )}
-
-        {request.property.caretakerId === user.id &&
-          request.status === "APPROVED" && (
-           <CompletionForm requestId={request.id} />
-      )}
-
       </main>
     </div>
   );

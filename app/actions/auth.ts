@@ -3,9 +3,13 @@
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
-import { createSessionToken, getCurrentUser } from "../../lib/session";
+import {
+  createSessionToken,
+  requireVerifiedUser,
+} from "../../lib/session";
 import { cookies } from "next/headers";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
+import { sendVerificationEmail } from "../../lib/emailVerification";
 
 type SignupInput = {
   name: string;
@@ -29,16 +33,19 @@ type SignupResult =
       error: string;
     };
 
-const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+const nameRegex =
+  /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function signup(input: SignupInput): Promise<SignupResult> {
-  // The browser can send anything, so check every type first
   const trimmedName =
     typeof input?.name === "string" ? input.name.trim() : "";
   const email =
-    typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
-  const password = typeof input?.password === "string" ? input.password : "";
+    typeof input?.email === "string"
+      ? input.email.trim().toLowerCase()
+      : "";
+  const password =
+    typeof input?.password === "string" ? input.password : "";
   const role = input?.role;
 
   if (!trimmedName) {
@@ -48,7 +55,8 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
-      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      error:
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
@@ -75,17 +83,6 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return { success: false, error: "Please choose a role." };
   }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (existingUser) {
-    return {
-      success: false,
-      error: "An account with this email already exists.",
-    };
-  }
-
   try {
     const passwordHash = await hashPassword(password);
 
@@ -98,11 +95,32 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       },
     });
 
+    if (role === "OWNER") {
+      try {
+        await sendVerificationEmail(user.id, user.email);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
 
-    // BAY71:
-// Don't automatically assign properties during signup,
-// Caretakers must accept a valid invitation
+        return {
+          success: false,
+          error:
+            "Your account was created, but we couldn't send the verification email. Please try the resend option.",
+        };
+      }
 
+      return {
+        success: true,
+        data: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+        },
+      };
+    }
+
+    // BAY-71: Caretakers must accept a valid invitation.
+    // Preserve the existing caretaker signup/session behavior.
     const cookieStore = await cookies();
 
     cookieStore.set("userId", createSessionToken(user.id), {
@@ -124,28 +142,37 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   } catch (error) {
     console.error("Failed to create user:", error);
 
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return {
+        success: false,
+        error: "An account with this email already exists.",
+      };
+    }
+
     return { success: false, error: "Failed to create account." };
   }
 }
 
 type UpdateProfileResult =
-  | {
-      success: true;
-    }
-  | {
-      success: false;
-      error: string;
-    };
+  | { success: true }
+  | { success: false; error: string };
 
 export async function updateProfile(
   name: string,
   phone: string
 ): Promise<UpdateProfileResult> {
-  const user = await getCurrentUser();
+  const auth = await requireVerifiedUser();
 
-  if (!user) {
-    return { success: false, error: "You must be logged in." };
+  if (!auth.success) {
+    return { success: false, error: auth.error };
   }
+
+  const user = auth.user;
 
   if (user.role !== "OWNER") {
     return {
@@ -164,7 +191,8 @@ export async function updateProfile(
   if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
     return {
       success: false,
-      error: "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      error:
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
     };
   }
 
@@ -172,7 +200,6 @@ export async function updateProfile(
     return { success: false, error: "Phone number is required." };
   }
 
-  // Check the phone again on the server (the form check can be skipped)
   const parsed =
     trimmedPhone.length <= 20
       ? parsePhoneNumberFromString(trimmedPhone)
@@ -190,14 +217,13 @@ export async function updateProfile(
       where: { id: user.id },
       data: {
         name: trimmedName,
-        phone: parsed.number, // clean +countrycode form
+        phone: parsed.number,
       },
     });
 
     return { success: true };
   } catch (error) {
     console.error("Failed to update profile:", error);
-
     return { success: false, error: "Failed to update profile." };
   }
 }

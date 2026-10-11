@@ -1,12 +1,13 @@
+
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { getCurrentUser, requireVerifiedUser } from "@/lib/session";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
-import { requireUser, requireOwnerOfProperty } from "@/lib/authz";
+import { requireOwnerOfProperty } from "@/lib/authz";
 
 type CreatePropertyInput = {
   address: string;
@@ -52,7 +53,12 @@ function validatePropertyDetails(input: CreatePropertyInput) {
 // This is NOT an authorization check.
 export async function getPropertyId(): Promise<string | null> {
   const user = await getCurrentUser();
+
   if (!user) return null;
+
+  if (user.role === "OWNER" && !user.emailVerifiedAt) {
+    return null;
+  }
 
   const property = await prisma.property.findFirst({
     where:
@@ -82,10 +88,7 @@ export async function inviteCaretaker(
   const email = caretakerEmail.trim().toLowerCase();
 
   if (!propertyId.trim()) {
-    return {
-      success: false,
-      error: "Property is required.",
-    };
+    return { success: false, error: "Property is required." };
   }
 
   if (
@@ -99,7 +102,7 @@ export async function inviteCaretaker(
     };
   }
 
-  // Authorization: logged-in owner who owns this property.
+  // Authorization: verified owner who owns this property.
   const a = await requireOwnerOfProperty(propertyId);
 
   if (!a.ok) {
@@ -108,6 +111,14 @@ export async function inviteCaretaker(
 
   const owner = a.user;
   const property = a.property;
+
+  // Defense in depth in case requireOwnerOfProperty doesn't check verification.
+  if (!owner.emailVerifiedAt) {
+    return {
+      success: false,
+      error: "Please verify your email before continuing.",
+    };
+  }
 
   if (property.caretakerId) {
     return {
@@ -118,10 +129,7 @@ export async function inviteCaretaker(
 
   const caretaker = await prisma.user.findUnique({
     where: { email },
-    select: {
-      id: true,
-      role: true,
-    },
+    select: { id: true, role: true },
   });
 
   if (caretaker?.role === "OWNER") {
@@ -145,7 +153,6 @@ export async function inviteCaretaker(
     }
   }
 
-  // Expire outdated invitations.
   await prisma.invitation.updateMany({
     where: {
       propertyId: property.id,
@@ -208,15 +215,8 @@ export async function inviteCaretaker(
   }
 
   const rawToken = randomBytes(32).toString("hex");
-
-  const tokenHash = createHash("sha256")
-    .update(rawToken)
-    .digest("hex");
-
-  const invitationUrl = new URL(
-    `/invite/${rawToken}`,
-    baseUrl
-  ).toString();
+  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const invitationUrl = new URL(`/invite/${rawToken}`, baseUrl).toString();
 
   let invitation: { id: string };
 
@@ -310,10 +310,17 @@ export async function createProperty(
   if (!details.success) return details;
   const { address, city } = details;
 
-  const a = await requireUser(["OWNER"]);
+  const auth = await requireVerifiedUser();
 
-  if (!a.ok) {
-    return { success: false, error: a.error };
+  if (!auth.success) {
+    return { success: false, error: auth.error };
+  }
+
+  if (auth.user.role !== "OWNER") {
+    return {
+      success: false,
+      error: "Only owners can create properties.",
+    };
   }
 
   try {
@@ -321,7 +328,7 @@ export async function createProperty(
       data: {
         address,
         city,
-        ownerId: a.user.id,
+        ownerId: auth.user.id,
         caretakerId: null,
       },
       select: {
@@ -331,10 +338,7 @@ export async function createProperty(
       },
     });
 
-    return {
-      success: true,
-      data: property,
-    };
+    return { success: true, data: property };
   } catch (error) {
     console.error("Failed to create property:", error);
 

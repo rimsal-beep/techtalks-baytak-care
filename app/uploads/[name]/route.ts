@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/session";
+import { requireVerifiedUser } from "@/lib/session";
 import { requestScope } from "@/lib/authz";
 import { CONTENT_TYPES, UPLOAD_DIR, UPLOAD_NAME } from "@/lib/uploads";
 
@@ -12,8 +12,13 @@ import { CONTENT_TYPES, UPLOAD_DIR, UPLOAD_NAME } from "@/lib/uploads";
 export async function GET(_req: Request, { params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
 
-  const user = await getCurrentUser();
-  if (!user) return new Response("Please log in.", { status: 401 });
+  const auth = await requireVerifiedUser();
+
+if (!auth.success) {
+  return new Response(auth.error, { status: 401 });
+}
+
+const user = auth.user;
 
   // Same answer for "no such file" and "not yours".
   const missing = () => new Response("Not found.", { status: 404 });

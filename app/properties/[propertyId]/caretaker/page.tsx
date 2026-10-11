@@ -28,6 +28,7 @@ export default async function PropertyCaretakerPage({
     where: {
       id: propertyId,
       ownerId: user.id,
+      deletedAt: null,
     },
     select: {
       id: true,

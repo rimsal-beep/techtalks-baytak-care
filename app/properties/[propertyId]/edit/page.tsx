@@ -12,7 +12,7 @@ export default async function EditPropertyPage({
   const { propertyId } = await params;
   const a = unwrap(await requireOwnerOfProperty(propertyId));
   const property = await prisma.property.findFirst({
-    where: { id: a.property.id, ownerId: a.user.id },
+    where: { id: a.property.id, ownerId: a.user.id, deletedAt: null },
     select: { id: true, address: true, city: true },
   });
 

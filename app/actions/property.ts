@@ -7,7 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireVerifiedUser } from "@/lib/session";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
-import { requireOwnerOfProperty } from "@/lib/authz";
+import { requireOwnerOfProperty, requireUser, isId, lockActiveProperty } from "@/lib/authz";
 
 type CreatePropertyInput = {
   address: string;
@@ -63,8 +63,8 @@ export async function getPropertyId(): Promise<string | null> {
   const property = await prisma.property.findFirst({
     where:
       user.role === "OWNER"
-        ? { ownerId: user.id }
-        : { caretakerId: user.id },
+        ? { ownerId: user.id, deletedAt: null }
+        : { caretakerId: user.id, deletedAt: null },
     select: { id: true },
   });
 
@@ -153,32 +153,19 @@ export async function inviteCaretaker(
     }
   }
 
-  await prisma.invitation.updateMany({
-    where: {
-      propertyId: property.id,
-      email,
-      status: "PENDING",
-      expiresAt: { lte: new Date() },
-    },
-    data: { status: "EXPIRED" },
-  });
-
-  const existingInvitation = await prisma.invitation.findFirst({
+  // Preserve duplicate-submit success before checking email configuration.
+  const pending = await prisma.invitation.findFirst({
     where: {
       propertyId: property.id,
       email,
       status: "PENDING",
       expiresAt: { gt: new Date() },
+      property: { ownerId: owner.id, deletedAt: null },
     },
     select: { id: true },
   });
-
-  if (existingInvitation) {
-    return {
-      success: true,
-      linked: false,
-      message: "A valid invitation already exists for this email.",
-    };
+  if (pending) {
+    return { success: true, linked: false, message: "A valid invitation already exists for this email." };
   }
 
   const appUrl = process.env.APP_URL;
@@ -221,19 +208,55 @@ export async function inviteCaretaker(
   let invitation: { id: string };
 
   try {
-    invitation = await prisma.invitation.create({
-      data: {
-        email,
-        tokenHash,
-        status: "PENDING",
-        expiresAt: new Date(Date.now() + INVITATION_DURATION_MS),
-        propertyId: property.id,
-        invitedById: owner.id,
-        emailAttempts: 1,
-        lastEmailAt: new Date(),
-      },
-      select: { id: true },
+    const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, property.id, owner);
+      const current = await tx.property.findFirst({
+        where: { id: property.id, caretakerId: null, deletedAt: null },
+        select: { id: true },
+      });
+      if (!current) throw new Error("PROPERTY_UNAVAILABLE");
+      await tx.invitation.updateMany({
+        where: {
+          propertyId: property.id,
+          email,
+          status: "PENDING",
+          expiresAt: { lte: new Date() },
+        },
+        data: { status: "EXPIRED" },
+      });
+
+      const existingInvitation = await tx.invitation.findFirst({
+        where: {
+          propertyId: property.id,
+          email,
+          status: "PENDING",
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      });
+
+      if (existingInvitation) {
+        return { id: existingInvitation.id, existing: true };
+      }
+
+      return tx.invitation.create({
+        data: {
+          email,
+          tokenHash,
+          status: "PENDING",
+          expiresAt: new Date(Date.now() + INVITATION_DURATION_MS),
+          propertyId: property.id,
+          invitedById: owner.id,
+          emailAttempts: 1,
+          lastEmailAt: new Date(),
+        },
+        select: { id: true },
+      });
     });
+    if ("existing" in result) {
+      return { success: true, linked: false, message: "A valid invitation already exists for this email." };
+    }
+    invitation = result;
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -242,6 +265,7 @@ export async function inviteCaretaker(
       const existing = await prisma.invitation.findFirst({
         where: {
           propertyId: property.id,
+          property: { ownerId: owner.id, deletedAt: null },
           email,
           status: "PENDING",
           expiresAt: { gt: new Date() },
@@ -283,8 +307,8 @@ export async function inviteCaretaker(
   }
 
   try {
-    await prisma.invitation.update({
-      where: { id: invitation.id },
+    await prisma.invitation.updateMany({
+      where: { id: invitation.id, status: "PENDING", property: { ownerId: owner.id, deletedAt: null } },
       data: { emailSentAt: new Date() },
     });
   } catch (error) {
@@ -361,7 +385,7 @@ export async function updateProperty(
 
   try {
     const updated = await prisma.property.updateMany({
-      where: { id: a.property.id, ownerId: a.user.id },
+      where: { id: a.property.id, ownerId: a.user.id, deletedAt: null },
       // Never pass the browser's input object to Prisma.
       data: { address: details.address, city: details.city },
     });
@@ -381,5 +405,48 @@ export async function updateProperty(
   revalidatePath("/caretaker/dashboard", "layout");
   revalidatePath("/activity");
 
+  return { success: true };
+}
+
+export async function deleteProperty(propertyId: string): Promise<
+  { success: true } | { success: false; error: string }
+> {
+  const auth = await requireUser(["OWNER"]);
+  if (!auth.ok) return { success: false, error: auth.error };
+  if (!isId(propertyId)) return { success: false, error: "Not found." };
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      // The conditional write locks the property and rechecks ownership/state.
+      // Browser input supplies only the identifier, never update data.
+      const deleted = await tx.property.updateMany({
+        where: { id: propertyId, ownerId: auth.user.id, deletedAt: null },
+        data: { deletedAt: now, caretakerId: null },
+      });
+      if (deleted.count !== 1) {
+        const existing = await tx.property.findFirst({
+          where: { id: propertyId, ownerId: auth.user.id, deletedAt: { not: null } },
+          select: { id: true },
+        });
+        return existing ? { success: true as const } : { success: false as const, error: "Not found." };
+      }
+      await tx.invitation.updateMany({
+        where: { propertyId, status: "PENDING" },
+        data: { status: "REVOKED", revokedAt: now },
+      });
+      return { success: true as const };
+    });
+    if (!result.success) return result;
+  } catch (error) {
+    console.error("Failed to delete property:", error);
+    return { success: false, error: "Failed to delete property. Please try again." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/properties", "layout");
+  revalidatePath("/requests", "layout");
+  revalidatePath("/caretaker/dashboard", "layout");
+  revalidatePath("/activity");
   return { success: true };
 }

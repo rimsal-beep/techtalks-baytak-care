@@ -5,7 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
 import { getCurrentUser, requireVerifiedUser } from "@/lib/session";
-import { isId, requireUser } from "@/lib/authz";
+import { isId, requireUser, lockActiveProperty } from "@/lib/authz";
 
 type ActionResult =
   | { success: true; message: string }
@@ -68,6 +68,11 @@ export async function acceptInvitation(
         };
       }
 
+      const property = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Property"
+        WHERE "id" = ${invitation.propertyId} AND "deletedAt" IS NULL
+          AND "caretakerId" IS NULL FOR UPDATE`;
+      if (property.length !== 1) throw new Error("PROPERTY_UNAVAILABLE");
+
       const accepted = await tx.invitation.updateMany({
         where: {
           id: invitation.id,
@@ -89,6 +94,7 @@ export async function acceptInvitation(
         where: {
           id: invitation.propertyId,
           caretakerId: null,
+          deletedAt: null,
         },
         data: {
           caretakerId: user.id,
@@ -133,7 +139,7 @@ export async function revokeInvitation(
     const revoked = await prisma.invitation.updateMany({
       where: {
         id: invitationId,
-        property: { ownerId: auth.user.id },
+        property: { ownerId: auth.user.id, deletedAt: null },
         status: "PENDING",
         expiresAt: { gt: now },
       },
@@ -177,6 +183,7 @@ export async function removeCaretaker(
       where: {
         id: propertyId,
         ownerId: auth.user.id,
+        deletedAt: null,
         caretakerId: { not: null },
       },
       data: { caretakerId: null },
@@ -236,6 +243,7 @@ export async function resendInvitation(
     where: {
       id: propertyId,
       ownerId: owner.id,
+      deletedAt: null,
     },
     select: { caretakerId: true },
   });
@@ -313,29 +321,32 @@ export async function resendInvitation(
   const invitationUrl = new URL(`/invite/${rawToken}`, baseUrl).toString();
 
   try {
-    const updated = await prisma.invitation.updateMany({
-      where: {
-        id: invitation.id,
-        status: "PENDING",
-        tokenHash: invitation.tokenHash,
-        expiresAt: { gt: now },
-        OR: [
-          { lastEmailAt: null },
-          {
-            lastEmailAt: {
-              lt: new Date(now.getTime() - cooldownMs),
+    const updated = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, propertyId, owner);
+      return tx.invitation.updateMany({
+        where: {
+          id: invitation.id,
+          property: { ownerId: owner.id, deletedAt: null, caretakerId: null },
+          status: "PENDING",
+          tokenHash: invitation.tokenHash,
+          expiresAt: { gt: now },
+          OR: [
+            { lastEmailAt: null },
+            {
+              lastEmailAt: {
+                lt: new Date(now.getTime() - cooldownMs),
+              },
             },
-          },
-        ],
-      },
-      data: {
-        tokenHash,
-        lastEmailAt: now,
-        emailAttempts: { increment: 1 },
-        emailSentAt: null,
-      },
+          ],
+        },
+        data: {
+          tokenHash,
+          lastEmailAt: now,
+          emailAttempts: { increment: 1 },
+          emailSentAt: null,
+        },
+      });
     });
-
     if (updated.count !== 1) {
       return {
         success: false,
@@ -357,6 +368,8 @@ export async function resendInvitation(
       where: {
         id: invitation.id,
         tokenHash,
+        status: "PENDING",
+        property: { ownerId: owner.id, deletedAt: null },
       },
       data: { emailSentAt: new Date() },
     });

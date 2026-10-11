@@ -17,6 +17,7 @@ import {
   summarizeRequests,
 } from "../propertyHelpers";
 import s from "./PropertyPage.module.css";
+import DeletePropertyButton from "./DeletePropertyButton";
 
 const STATUS_LABEL: Record<string, string> = {
   REPORTED: "Reported",
@@ -123,6 +124,7 @@ export default async function PropertyDetailsPage({
     where: {
       id: propertyId,
       ownerId: user.id,
+      deletedAt: null,
     },
     select: {
       id: true,
@@ -289,6 +291,8 @@ export default async function PropertyDetailsPage({
           </div>
         </div>
       </section>
+
+      <DeletePropertyButton propertyId={property.id} />
 
       {/* ---------- tabs ---------- */}
       <nav className={s.tabs} aria-label="Property sections">

@@ -42,7 +42,7 @@ export default async function RequestPage({
 
   // Only requests of properties that belong to THIS caretaker can be opened.
     const found = await prisma.maintenanceRequest.findFirst({
-    where: { id, property: { caretakerId: user.id } },
+    where: { id, property: { caretakerId: user.id, deletedAt: null } },
     select: {
       id: true,
       title: true,

@@ -1,4 +1,5 @@
 
+import type { Prisma } from "@/generated/prisma/client";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -75,8 +76,8 @@ export async function requireUser(
 
 export function propertyScope(user: SessionUser) {
   return user.role === "OWNER"
-    ? { ownerId: user.id }
-    : { caretakerId: user.id };
+    ? { ownerId: user.id, deletedAt: null }
+    : { caretakerId: user.id, deletedAt: null };
 }
 
 export function requestScope(user: SessionUser) {
@@ -130,7 +131,7 @@ export async function requireOwnerOfProperty(
   if (!isId(propertyId)) return NOT_FOUND;
 
   const property = await prisma.property.findFirst({
-    where: { id: propertyId, ownerId: u.user.id },
+    where: { id: propertyId, ownerId: u.user.id, deletedAt: null },
     select: PROPERTY_SELECT,
   });
 
@@ -151,7 +152,7 @@ export async function requireAssignedCaretaker(
   if (!isId(propertyId)) return NOT_FOUND;
 
   const property = await prisma.property.findFirst({
-    where: { id: propertyId, caretakerId: u.user.id },
+    where: { id: propertyId, caretakerId: u.user.id, deletedAt: null },
     select: PROPERTY_SELECT,
   });
 
@@ -195,4 +196,20 @@ export async function requireRequestAccess(
   return request
     ? { ok: true, user: u.user, request }
     : NOT_FOUND;
+}
+
+/** Serialize property-scoped writes with deletion; recheck membership under the lock. */
+export async function lockActiveProperty(
+  tx: Prisma.TransactionClient,
+  propertyId: string,
+  user: SessionUser
+) {
+  const rows = user.role === "OWNER"
+    ? await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Property"
+        WHERE "id" = ${propertyId} AND "ownerId" = ${user.id}
+          AND "deletedAt" IS NULL FOR UPDATE`
+    : await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Property"
+        WHERE "id" = ${propertyId} AND "caretakerId" = ${user.id}
+          AND "deletedAt" IS NULL FOR UPDATE`;
+  if (rows.length !== 1) throw new Error("PROPERTY_UNAVAILABLE");
 }

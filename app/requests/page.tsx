@@ -30,6 +30,7 @@ export default async function RequestsPage() {
     where: {
       property: {
         ownerId: user.id,
+        deletedAt: null,
       },
     },
     include: {

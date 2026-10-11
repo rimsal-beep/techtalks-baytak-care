@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRequestAccess } from "@/lib/authz";
+import { requireRequestAccess, lockActiveProperty } from "@/lib/authz";
 import { REJECTION_REASON_MAX_LENGTH } from "@/lib/rejectionReason";
 
 export async function approveRequest(requestId: string) {
@@ -20,11 +20,12 @@ export async function approveRequest(requestId: string) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, request.propertyId, user);
       const updated = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
           status: "PENDING_APPROVAL",
-          property: { ownerId: user.id },
+          property: { ownerId: user.id, deletedAt: null },
         },
         data: {
           status: "APPROVED",
@@ -103,11 +104,12 @@ export async function rejectRequest(requestId: string, reason: string) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, request.propertyId, user);
       const updated = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
           status: "PENDING_APPROVAL",
-          property: { ownerId: user.id },
+          property: { ownerId: user.id, deletedAt: null },
         },
         data: {
           status: "REJECTED",

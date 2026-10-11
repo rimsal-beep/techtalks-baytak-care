@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireRequestAccess } from "@/lib/authz";
+import { requireRequestAccess, lockActiveProperty } from "@/lib/authz";
 import { validateMaintenanceRequestFields, type MaintenanceRequestFields } from "@/lib/maintenanceRequestFields";
 
 const fail = (error: string) => ({ success: false as const, error });
@@ -30,11 +30,12 @@ export async function editRequest(requestId: string, input: MaintenanceRequestFi
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.request.propertyId, a.user);
       const updated = await tx.maintenanceRequest.updateMany({
         where: {
           id: a.request.id,
           status: "PENDING_APPROVAL",
-          property: { ownerId: a.user.id },
+          property: { ownerId: a.user.id, deletedAt: null },
         },
         // Explicit whitelist. Never forward browser input or protected metadata.
         data: {
@@ -78,18 +79,19 @@ export async function cancelRequest(requestId: string) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.request.propertyId, a.user);
       const updated = await tx.maintenanceRequest.updateMany({
         where: {
           id: a.request.id,
           status: "PENDING_APPROVAL",
-          property: { ownerId: a.user.id },
+          property: { ownerId: a.user.id, deletedAt: null },
         },
         data: { status: "CANCELLED" },
       });
       if (updated.count !== 1) {
         // Concurrent cancellation is safe, but another decision or owner is not.
         const cancelled = await tx.maintenanceRequest.findFirst({
-          where: { id: a.request.id, status: "CANCELLED", property: { ownerId: a.user.id } },
+          where: { id: a.request.id, status: "CANCELLED", property: { ownerId: a.user.id, deletedAt: null } },
           select: { id: true },
         });
         return cancelled ? { success: true as const } : fail(pendingOnly);

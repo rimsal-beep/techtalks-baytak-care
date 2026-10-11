@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireRequestAccess } from "@/lib/authz";
+import { requireUser, requireRequestAccess, lockActiveProperty } from "@/lib/authz";
 import { saveUpload } from "@/lib/uploads";
 
 /**
@@ -32,13 +32,14 @@ export async function startWork(requestId: string) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, request.propertyId, user);
       // status and caretaker are in the where again, so a double tap
       // or a stale page cannot start it twice.
       const started = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
           status: "APPROVED",
-          property: { caretakerId: user.id },
+          property: { caretakerId: user.id, deletedAt: null },
         },
         data: { status: "IN_PROGRESS" },
       });
@@ -79,7 +80,7 @@ export async function uploadJobFile(formData: FormData) {
 
   // A caretaker with no property has no reason to upload anything
   const assigned = await prisma.property.count({
-    where: { caretakerId: a.user.id },
+    where: { caretakerId: a.user.id, deletedAt: null },
   });
   if (assigned === 0) return { success: false as const, error: "Not allowed." };
 
@@ -156,13 +157,14 @@ export async function completeJob(input: CompleteJobInput) {
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, request.propertyId, user);
       // The status and the owner relation are in the where again,
       // so a double tap or a stale page cannot complete it twice.
       const done = await tx.maintenanceRequest.updateMany({
         where: {
           id: request.id,
           status: "IN_PROGRESS",
-          property: { caretakerId: user.id },
+          property: { caretakerId: user.id, deletedAt: null },
         },
         data: {
           status: "COMPLETED",

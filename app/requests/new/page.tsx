@@ -31,7 +31,7 @@ export default async function NewRequestPage({
   });
 
   if (!property) {
-    return <div>No assigned property found.</div>;
+    return <div>Property not found or unavailable.</div>;
   }
 
   return <NewRequestForm property={property} />;

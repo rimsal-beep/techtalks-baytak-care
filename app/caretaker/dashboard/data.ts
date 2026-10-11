@@ -19,7 +19,7 @@ export const getCaretakerData = cache(async () => {
   const { monthStart, nextMonthStart } = getChecklistMonthRange();
 
   const properties = await prisma.property.findMany({
-    where: { caretakerId: user.id },
+    where: { caretakerId: user.id, deletedAt: null },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
@@ -48,6 +48,7 @@ export const getCaretakerData = cache(async () => {
     where: {
       property: {
         caretakerId: user.id,
+        deletedAt: null,
       },
     },
     orderBy: { createdAt: "desc" },

@@ -10,7 +10,7 @@ export default async function EditRequestPage({ params }: { params: Promise<{ re
   const { requestId } = await params;
   const a = unwrap(await requireRequestAccess(requestId, "OWNER"));
   const request = await prisma.maintenanceRequest.findFirst({
-    where: { id: a.request.id, status: "PENDING_APPROVAL", property: { ownerId: a.user.id } },
+    where: { id: a.request.id, status: "PENDING_APPROVAL", property: { ownerId: a.user.id, deletedAt: null } },
     select: { id: true, title: true, description: true, requestType: true, estimatedCost: true, currency: true, estimateNote: true },
   });
   if (!request) notFound();

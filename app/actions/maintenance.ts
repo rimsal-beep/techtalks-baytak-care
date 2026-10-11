@@ -2,7 +2,7 @@
 
 import { prisma } from "../../lib/prisma";
 import { isChecklistItemText } from "../../lib/checklistItems";
-import { requirePropertyMember, requireAssignedCaretaker, isId } from "@/lib/authz";
+import { requirePropertyMember, requireAssignedCaretaker, isId, lockActiveProperty } from "@/lib/authz";
 import { getChecklistMonthRange, matchesChecklistUndoToken } from "@/lib/checklistUndo";
 import { revalidatePath } from "next/cache";
 import { isUniqueConstraintError, normalizeIdempotencyKey } from "@/lib/idempotency";
@@ -69,22 +69,24 @@ export async function createMaintenanceRequest(
       issuePhotoUrls.push(saved.url);
     }
 
-    const createdRequest = await prisma.maintenanceRequest.create({
-      data: {
-        title,
-        requestType,
-        description: description || null,
-        status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
-        estimatedCost,
-        currency,
-        estimateNote: estimateNote || null,
-        issuePhotoUrls,
-        reportedById: a.user.id,
-        propertyId: a.property.id,
-        idempotencyKey,
-      },
+    const createdRequest = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
+      return tx.maintenanceRequest.create({
+        data: {
+          title,
+          requestType,
+          description: description || null,
+          status: estimatedCost !== null ? "PENDING_APPROVAL" : "REPORTED",
+          estimatedCost,
+          currency,
+          estimateNote: estimateNote || null,
+          issuePhotoUrls,
+          reportedById: a.user.id,
+          propertyId: a.property.id,
+          idempotencyKey,
+        },
+      });
     });
-
     return { success: true as const, duplicate: false, requestId: createdRequest.id };
   } catch (error) {
     if (isUniqueConstraintError(error)) {
@@ -130,6 +132,7 @@ export async function completeChecklistItem(
 
   try {
     await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
       const now = new Date();
       const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
@@ -207,6 +210,7 @@ export async function undoChecklistItem(input: UndoChecklistItemInput) {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, a.property.id, a.user);
       const item = await tx.checklistItem.findFirst({
         where: {
           id: input.itemId,
@@ -214,7 +218,7 @@ export async function undoChecklistItem(input: UndoChecklistItemInput) {
           text: checklistText,
           completed: true,
           completedAt: { gte: monthStart, lt: nextMonthStart },
-          property: { caretakerId: a.user.id },
+          property: { caretakerId: a.user.id, deletedAt: null },
         },
       });
 
@@ -233,7 +237,7 @@ export async function undoChecklistItem(input: UndoChecklistItemInput) {
           completedAt: { equals: item.completedAt, gte: monthStart, lt: nextMonthStart },
           completedById: item.completedById,
           updatedAt: item.updatedAt,
-          property: { caretakerId: a.user.id },
+          property: { caretakerId: a.user.id, deletedAt: null },
         },
         data: { completed: false, completedById: null, completedAt: null },
       });

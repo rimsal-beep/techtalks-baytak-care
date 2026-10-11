@@ -41,6 +41,7 @@ export default async function PropertiesPage() {
   const properties = await prisma.property.findMany({
     where: {
       ownerId: user.id,
+      deletedAt: null,
     },
     orderBy: {
       createdAt: "desc",

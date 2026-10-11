@@ -54,12 +54,17 @@ function loadActions(db = prisma) {
   };
 }
 
-function transactionHook({ beforeWrite, failLog } = {}) {
+function transactionHook({ beforeLock, beforeWrite, failLog } = {}) {
   return new Proxy(prisma, {
     get(target, key) {
       if (key !== '$transaction') return target[key];
       return (callback) => target.$transaction(tx => callback({
         ...tx,
+        // Coordinate property races before lockActiveProperty acquires its row lock.
+        $queryRaw: async (...args) => {
+          if (beforeLock) await beforeLock();
+          return tx.$queryRaw(...args);
+        },
         maintenanceRequest: {
           findFirst: args => tx.maintenanceRequest.findFirst(args),
           updateMany: async args => {
@@ -95,7 +100,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
     return prisma.maintenanceRequest.create({ data: {
       title: tag, description: 'Original description', requestType: 'PLUMBING',
       estimatedCost: 20, currency: 'USD', estimateNote: 'Original note', status,
-      propertyId: property.id, reportedById: caretaker.id,
+      propertyId: property.id, reportedById: caretaker.id, idempotencyKey: randomUUID(),
       issuePhotoUrls: ['/uploads/original.jpg'], beforePhotoUrls: [], afterPhotoUrls: [],
       contractorName: 'Original contractor', contractorContact: 'Original contact', priority: 'HIGH',
     } });
@@ -250,7 +255,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
       }
       await t.test(method + ' rechecks ownership if it changes after authorization', async () => {
         const r = await request(a);
-        const racing = loadActions(transactionHook({ beforeWrite: async () => {
+        const racing = loadActions(transactionHook({ beforeLock: async () => {
           await prisma.property.update({ where: { id: a.id }, data: { ownerId: ownerB.id } });
         } }));
         try {
@@ -273,7 +278,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
       let arrivals = 0;
       let release;
       const ready = new Promise(resolve => { release = resolve; });
-      const concurrent = loadActions(transactionHook({ beforeWrite: async () => {
+      const concurrent = loadActions(transactionHook({ beforeLock: async () => {
         if (++arrivals === 2) release();
         await ready;
       } }));
@@ -295,7 +300,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
         currentUser = person;
         for (const estimatedCost of [undefined, 0, 20]) {
           const title = tag + randomUUID();
-          assert.equal((await actions.createMaintenanceRequest({ ...valid, title, estimatedCost, propertyId: a.id })).success, true);
+          assert.equal((await actions.createMaintenanceRequest({ ...valid, title, estimatedCost, propertyId: a.id, idempotencyKey: randomUUID() })).success, true);
           const created = await prisma.maintenanceRequest.findFirstOrThrow({ where: { title } });
           assert.equal(created.status, estimatedCost === undefined ? 'REPORTED' : 'PENDING_APPROVAL');
           assert.equal(created.reportedById, person.id);

@@ -5,6 +5,7 @@ import { isChecklistItemText } from "../../lib/checklistItems";
 import { requirePropertyMember, requireAssignedCaretaker, isId } from "@/lib/authz";
 import { getChecklistMonthRange, matchesChecklistUndoToken } from "@/lib/checklistUndo";
 import { revalidatePath } from "next/cache";
+import { isUniqueConstraintError, normalizeIdempotencyKey } from "@/lib/idempotency";
 import { saveUpload } from "@/lib/uploads";
 
 import { validateMaintenanceRequestFields } from "@/lib/maintenanceRequestFields";
@@ -23,6 +24,7 @@ type CreateMaintenanceRequestInput = {
   estimateNote?: string;
   issuePhotos?: File[];
   propertyId: string;
+  idempotencyKey: string;
 };
 
 export async function createMaintenanceRequest(
@@ -31,6 +33,11 @@ export async function createMaintenanceRequest(
   const fields = validateMaintenanceRequestFields(input);
   if (!fields.success) return fields;
   const { title, requestType, description, estimateNote, currency, estimatedCost } = fields.data;
+
+  const idempotencyKey = normalizeIdempotencyKey(input?.idempotencyKey);
+  if (!idempotencyKey) {
+    return fail("A valid idempotency key is required. Refresh the form and try again.");
+  }
 
   const issuePhotos = Array.isArray(input?.issuePhotos)
     ? input.issuePhotos.filter(
@@ -44,6 +51,15 @@ export async function createMaintenanceRequest(
   const a = await requirePropertyMember(input?.propertyId);
   if (!a.ok) return fail(a.error);
 
+  const existingRequest = await prisma.maintenanceRequest.findFirst({
+    where: { reportedById: a.user.id, idempotencyKey },
+    select: { id: true },
+  });
+
+  if (existingRequest) {
+    return { success: true as const, duplicate: true, requestId: existingRequest.id };
+  }
+
   try {
     // saved privately, real file type read from the bytes
     const issuePhotoUrls: string[] = [];
@@ -53,7 +69,7 @@ export async function createMaintenanceRequest(
       issuePhotoUrls.push(saved.url);
     }
 
-    await prisma.maintenanceRequest.create({
+    const createdRequest = await prisma.maintenanceRequest.create({
       data: {
         title,
         requestType,
@@ -65,11 +81,21 @@ export async function createMaintenanceRequest(
         issuePhotoUrls,
         reportedById: a.user.id,
         propertyId: a.property.id,
+        idempotencyKey,
       },
     });
 
-    return { success: true as const };
+    return { success: true as const, duplicate: false, requestId: createdRequest.id };
   } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      const existingRequest = await prisma.maintenanceRequest.findFirst({
+        where: { reportedById: a.user.id, idempotencyKey },
+        select: { id: true },
+      });
+      if (existingRequest) {
+        return { success: true as const, duplicate: true, requestId: existingRequest.id };
+      }
+    }
     console.error("Failed to create maintenance request:", error);
 
     return fail("Failed to create maintenance request.");
@@ -104,48 +130,37 @@ export async function completeChecklistItem(
 
   try {
     await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
       const existingItem = await tx.checklistItem.findFirst({
-        where: {
-          propertyId,
-          text: checklistText,
-        },
+        where: { propertyId, text: checklistText, monthKey },
       });
 
-      const startOfMonth = new Date(
-        new Date().getFullYear(),
-        new Date().getMonth(),
-        1
-      );
-
-      if (
-        existingItem?.completed &&
-        existingItem.completedAt &&
-        existingItem.completedAt >= startOfMonth
-      ) {
+      if (existingItem?.completed) {
         throw new Error("CHECKLIST_ITEM_ALREADY_COMPLETED");
       }
 
       if (existingItem) {
-        await tx.checklistItem.update({
-          where: { id: existingItem.id },
-          data: {
-            completed: true,
-            completedById: user.id,
-            completedAt: new Date(),
-          },
+        const updated = await tx.checklistItem.updateMany({
+          where: { id: existingItem.id, completed: false },
+          data: { completed: true, completedById: user.id, completedAt: now },
         });
+        if (updated.count !== 1) {
+          throw new Error("CHECKLIST_ITEM_ALREADY_COMPLETED");
+        }
       } else {
         await tx.checklistItem.create({
           data: {
             text: checklistText,
             completed: true,
             completedById: user.id,
-            completedAt: new Date(),
+            completedAt: now,
             propertyId,
+            monthKey,
           },
         });
       }
-
       await tx.activityLog.create({
         data: {
           action: `Checklist completed: ${checklistText}`,
@@ -162,9 +177,10 @@ export async function completeChecklistItem(
       error instanceof Error &&
       error.message === "CHECKLIST_ITEM_ALREADY_COMPLETED"
     ) {
-      return fail("Checklist item is already completed.");
+      return fail("Checklist item is already completed this month.");
     }
 
+    if (isUniqueConstraintError(error)) return fail("Checklist item is already completed this month.");
     console.error("Failed to complete checklist item:", error);
 
     return fail("Failed to complete checklist item.");

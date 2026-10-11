@@ -15,6 +15,9 @@ export default async function HomePage() {
     redirect("/caretaker/dashboard");
   }
 
+  const checklistMonthDate = new Date();
+  const checklistMonthKey = `${checklistMonthDate.getFullYear()}-${String(checklistMonthDate.getMonth() + 1).padStart(2, "0")}`;
+
   const properties = await prisma.property.findMany({
     where: {
       ownerId: user.id,
@@ -34,6 +37,7 @@ export default async function HomePage() {
       checklistItems: {
         where: {
           completed: true,
+          monthKey: checklistMonthKey,
         },
         select: {
           text: true,

@@ -10,7 +10,6 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [message, setMessage] = useState("Verifying your email...");
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,9 +26,9 @@ function VerifyEmailContent() {
         if (cancelled) return;
 
         if (result.success) {
-          setSuccess(true);
-          setMessage("Your email has been verified. You can now log in.");
-        } else {
+  window.location.href = "/profile";
+  return;
+} else {
           setMessage(result.error);
         }
       } catch {
@@ -50,8 +49,6 @@ function VerifyEmailContent() {
     <main style={{ maxWidth: 520, margin: "80px auto", padding: 24 }}>
       <h1>Email verification</h1>
       <p role="status">{message}</p>
-
-      {success && <a href="/login">Go to login</a>}
     </main>
   );
 }

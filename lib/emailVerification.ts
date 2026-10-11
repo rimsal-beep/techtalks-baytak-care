@@ -1,4 +1,3 @@
-
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
@@ -76,14 +75,16 @@ export async function sendVerificationEmail(
 export async function verifyEmailToken(
   token: string
 ): Promise<{ success: true } | { success: false; error: string }> {
+  const invalidResult = {
+    success: false as const,
+    error: "This verification link is invalid or has expired.",
+  };
+
   if (
     typeof token !== "string" ||
     !/^[a-f0-9]{64}$/i.test(token)
   ) {
-    return {
-      success: false,
-      error: "This verification link is invalid or has expired.",
-    };
+    return invalidResult;
   }
 
   const tokenHash = hashToken(token);
@@ -95,15 +96,32 @@ export async function verifyEmailToken(
           where: { tokenHash },
         });
 
+      if (!verificationToken) {
+        return false;
+      }
+
+      const user = await tx.user.findUnique({
+        where: { id: verificationToken.userId },
+        select: { emailVerifiedAt: true },
+      });
+
+      if (!user) {
+        return false;
+      }
+
+      // Allow a retry if this token has already verified its owner.
+      if (user.emailVerifiedAt) {
+        return true;
+      }
+
       if (
-        !verificationToken ||
         verificationToken.usedAt ||
         verificationToken.expiresAt <= new Date()
       ) {
         return false;
       }
 
-      // Claim the token only if it is still unused and unexpired.
+      // Claim the token only if it remains unused and unexpired.
       const claimed = await tx.emailVerificationToken.updateMany({
         where: {
           id: verificationToken.id,
@@ -114,7 +132,12 @@ export async function verifyEmailToken(
       });
 
       if (claimed.count !== 1) {
-        return false;
+        const refreshedUser = await tx.user.findUnique({
+          where: { id: verificationToken.userId },
+          select: { emailVerifiedAt: true },
+        });
+
+        return Boolean(refreshedUser?.emailVerifiedAt);
       }
 
       await tx.user.update({
@@ -126,10 +149,7 @@ export async function verifyEmailToken(
     });
 
     if (!result) {
-      return {
-        success: false,
-        error: "This verification link is invalid or has expired.",
-      };
+      return invalidResult;
     }
 
     return { success: true };

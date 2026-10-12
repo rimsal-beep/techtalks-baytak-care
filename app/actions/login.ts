@@ -9,36 +9,37 @@ import {
   checkRateLimit,
   resetRateLimit,
 } from "../../lib/rateLimit";
+import { redirect } from "next/navigation";
 
-type LoginInput = {
-  email: string;
-  password: string;
+export type LoginState = {
+  error: string;
 };
 
 // A missing account gets the same slow password check as a wrong password.
 const DUMMY_HASH = hashPassword("not-a-real-password");
 
 const INVALID = {
-  success: false as const,
   error: "Invalid email or password.",
 };
 
-export async function login(input: LoginInput) {
+export async function login(
+  _previousState: LoginState,
+  formData: FormData
+): Promise<LoginState> {
+  const emailValue = formData.get("email");
+  const passwordValue = formData.get("password");
   const email =
-    typeof input?.email === "string"
-      ? input.email.trim().toLowerCase()
+    typeof emailValue === "string"
+      ? emailValue.trim().toLowerCase()
       : "";
 
   const password =
-    typeof input?.password === "string"
-      ? input.password
+    typeof passwordValue === "string"
+      ? passwordValue
       : "";
 
   if (!email || !password) {
-    return {
-      success: false as const,
-      error: "Email and password are required.",
-    };
+    return { error: "Email and password are required." };
   }
 
   if (email.length > 254 || password.length > 128) {
@@ -48,10 +49,7 @@ export async function login(input: LoginInput) {
   const rateLimit = checkRateLimit(email);
 
   if (!rateLimit.allowed) {
-    return {
-      success: false as const,
-      error: "Too many login attempts. Please try again later.",
-    };
+    return { error: "Too many login attempts. Please try again later." };
   }
 
   const user = await prisma.user.findUnique({
@@ -74,10 +72,7 @@ export async function login(input: LoginInput) {
 
   // Owners must verify their email before receiving a session.
   if (user.role === "OWNER" && !user.emailVerifiedAt) {
-    return {
-      success: false as const,
-      error: "Please verify your email before logging in.",
-    };
+    return { error: "Please verify your email before logging in." };
   }
 
   resetRateLimit(email);
@@ -94,22 +89,16 @@ export async function login(input: LoginInput) {
   // Remove the old propertyId cookie.
   cookieStore.delete("propertyId");
 
-  // Get the user's property from the database.
-  const property = await prisma.property.findFirst({
-    where:
-      user.role === "OWNER"
-        ? { ownerId: user.id, deletedAt: null }
-        : { caretakerId: user.id, deletedAt: null },
-    select: { id: true },
-  });
+  const nextValue = formData.get("next");
+  const nextPath =
+    typeof nextValue === "string" &&
+    /^\/invite\/[a-f0-9]{64}$/.test(nextValue)
+      ? nextValue
+      : null;
 
-  return {
-    success: true as const,
-    data: {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      propertyId: property?.id ?? null,
-    },
-  };
+  redirect(
+    user.role === "CARETAKER"
+      ? nextPath ?? "/caretaker/dashboard"
+      : "/"
+  );
 }

@@ -20,7 +20,7 @@ function LoginContent() {
       <h1 className={f.title}>Welcome back</h1>
       <p className={f.sub}>Log in to manage your property with confidence.</p>
 
-      <form action={formAction} method="POST">
+      <form action={formAction}>
         {nextPath && <input type="hidden" name="next" value={nextPath} />}
         <div className={f.field}>
           <label className={f.label} htmlFor="email">

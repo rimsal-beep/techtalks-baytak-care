@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
+import Link from "next/link";
 import f from "../Components/AuthShell.module.css";
 
 function SignupContent() {
@@ -11,14 +12,14 @@ function SignupContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"OWNER" | "CARETAKER" | "">("");
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
   const nextPath =
-    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
-      ? nextParam
-      : null;
+    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam) ? nextParam : null;
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +37,9 @@ function SignupContent() {
     const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
 
     if (!nameRegex.test(trimmedName)) {
-      setError("Name can only contain letters, spaces, hyphens, and apostrophes.");
+      setError(
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      );
       return;
     }
 
@@ -58,20 +61,22 @@ function SignupContent() {
       password,
       role,
       next: role === "CARETAKER" ? nextPath : null,
-   });
+    });
 
     if (result.success === false) {
       setError(result.error);
       setLoading(false);
       return;
     }
-        window.location.href = "/verify-email/sent";
+    router.push("/verify-email/sent");
   }
 
   return (
     <AuthShell wide>
       <h1 className={f.title}>Create your account</h1>
-      <p className={f.sub}>Join Baytak Care and start managing your property with confidence.</p>
+      <p className={f.sub}>
+        Join Baytak Care and start managing your property with confidence.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className={f.field}>
@@ -91,9 +96,21 @@ function SignupContent() {
 
             <button
               type="button"
-              onClick={() => setRole("CARETAKER")}
+              onClick={() => {
+                if (!nextPath) {
+                  setError(
+                    "Caretaker registration requires an invitation link.",
+                  );
+                  return;
+                }
+
+                setError("");
+                setRole("CARETAKER");
+              }}
               aria-pressed={role === "CARETAKER"}
-              className={role === "CARETAKER" ? `${f.role} ${f.roleOn}` : f.role}
+              className={
+                role === "CARETAKER" ? `${f.role} ${f.roleOn}` : f.role
+              }
               suppressHydrationWarning
             >
               <b>Caretaker</b>
@@ -142,14 +159,22 @@ function SignupContent() {
             <input
               className={f.input}
               id="password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              minLength={6}
+              placeholder="At least 8 characters"
+              minLength={8}
               required
               suppressHydrationWarning
             />
+            <button
+         type="button"
+          onClick={() => setShowPassword(!showPassword)}
+         aria-label={showPassword ? "Hide password" : "Show password"}
+        aria-pressed={showPassword}
+      >
+         {showPassword ? "Hide" : "Show"}
+          </button>
           </div>
 
           <div className={f.field}>
@@ -159,14 +184,22 @@ function SignupContent() {
             <input
               className={f.input}
               id="confirmPassword"
-              type="password"
+              type={showConfirmPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              minLength={6}
+              minLength={8}
               required
               suppressHydrationWarning
             />
+            <button
+      type="button"
+     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+     aria-pressed={showConfirmPassword}
+>
+     {showConfirmPassword ? "Hide" : "Show"}
+    </button>
           </div>
         </div>
 
@@ -176,14 +209,20 @@ function SignupContent() {
           </div>
         )}
 
-        <button type="submit" className={f.submit} disabled={loading} suppressHydrationWarning>
+        <button
+          type="submit"
+          className={f.submit}
+          disabled={loading}
+          suppressHydrationWarning
+        >
           {loading ? "Creating account..." : "Create account"}
         </button>
       </form>
 
-      <p className={f.foot}>
-        Already have an account? <a href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}>Log in</a>
-      </p>
+      <p>
+  <span>Already have an account?</span>{" "}
+  <Link href="/login">Log in</Link>
+</p>
     </AuthShell>
   );
 }

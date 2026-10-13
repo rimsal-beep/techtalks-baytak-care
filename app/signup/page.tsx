@@ -6,6 +6,7 @@ import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
 
+
 function SignupContent() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -19,6 +20,7 @@ function SignupContent() {
     nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
       ? nextParam
       : null;
+  const MIN_PASSWORD_LENGTH = 6;   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -145,8 +147,8 @@ function SignupContent() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              minLength={6}
+              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               suppressHydrationWarning
             />
@@ -163,7 +165,7 @@ function SignupContent() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               suppressHydrationWarning
             />

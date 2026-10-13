@@ -71,10 +71,10 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return { success: false, error: "Enter a valid email." };
   }
 
-  if (password.length < 8) {
+  if (password.length < 6) {
     return {
       success: false,
-      error: "Password must be at least 8 characters.",
+      error: "Password must be at least 6 characters.",
     };
   }
 

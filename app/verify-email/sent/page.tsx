@@ -30,9 +30,9 @@ export default function VerificationSentPage() {
     <main style={{ maxWidth: 520, margin: "80px auto", padding: 24 }}>
       <h1>Check your email</h1>
       <p>
-        If you created an owner account, verification instructions
+        If you created an account, verification instructions
         should arrive in your inbox. Check your spam folder too.
-      </p>
+    </p>
 
       <form onSubmit={handleSubmit}>
         <label htmlFor="email">Email address</label>

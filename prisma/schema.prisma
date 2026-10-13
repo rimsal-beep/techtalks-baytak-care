@@ -49,8 +49,8 @@ model Property {
   ownerId String
   owner   User   @relation("PropertyOwner", fields: [ownerId], references: [id])
 
-  caretakerId String? @unique
-  caretaker   User?   @relation("PropertyCaretaker", fields: [caretakerId], references: [id])
+  caretakerId String?
+  caretaker   User? @relation("PropertyCaretaker", fields: [caretakerId], references: [id])
 
   maintenanceRequests MaintenanceRequest[]
   invitations         Invitation[]
@@ -58,6 +58,7 @@ model Property {
   activityLogs        ActivityLog[]
 
   @@index([ownerId])
+  @@index([caretakerId])
 }
 
 model Invitation {
@@ -90,6 +91,7 @@ model Invitation {
 enum InvitationStatus {
   PENDING
   ACCEPTED
+  DECLINED
   EXPIRED
   REVOKED
 }

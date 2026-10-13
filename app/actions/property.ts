@@ -139,21 +139,6 @@ export async function inviteCaretaker(
     };
   }
 
-  if (caretaker) {
-    const existingAssignment = await prisma.property.findFirst({
-      where: { caretakerId: caretaker.id },
-      select: { id: true },
-    });
-
-    if (existingAssignment) {
-      return {
-        success: false,
-        error: "This caretaker is already assigned to a property.",
-      };
-    }
-  }
-
-  // Preserve duplicate-submit success before checking email configuration.
   const pending = await prisma.invitation.findFirst({
     where: {
       propertyId: property.id,

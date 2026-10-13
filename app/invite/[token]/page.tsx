@@ -1,9 +1,20 @@
 
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { acceptInvitation } from "@/app/actions/invitation";
+import {
+  acceptInvitation,
+  declineInvitation,
+  getInvitationPreview,
+} from "@/app/actions/invitation";
+
+type Preview = {
+  ownerName: string;
+  location: string;
+  expiresAt: string;
+};
 
 export default function InvitationPage({
   params,
@@ -11,26 +22,71 @@ export default function InvitationPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = use(params);
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
-  const [accepted, setAccepted] = useState(false);
+  const [completed, setCompleted] = useState(false);
 
-  async function handleAccept() {
-    if (loading) return;
+  useEffect(() => {
+    let active = true;
 
-    setLoading(true);
+    async function loadPreview() {
+      try {
+        const result = await getInvitationPreview(token);
+
+        if (!active) return;
+
+        if (result.success) {
+          setPreview(result.preview);
+        } else {
+          setMessage(result.error);
+        }
+      } catch {
+        if (active) {
+          setMessage("Unable to load invitation.");
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+
+    loadPreview();
+
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  async function handleDecision(decision: "accept" | "decline") {
+    if (processing) return;
+
+    setProcessing(true);
     setMessage("");
 
     try {
-      const result = await acceptInvitation(token);
-      setMessage(
-        result.success ? result.message : result.error
-      );
-      setAccepted(result.success);
+      const result =
+        decision === "accept"
+          ? await acceptInvitation(token)
+          : await declineInvitation(token);
+
+      setMessage(result.success ? result.message : result.error);
+
+      if (result.success) {
+  setCompleted(true);
+
+  if (decision === "accept" && result.propertyId) {
+    router.replace(
+      `/caretaker/dashboard?property=${encodeURIComponent(result.propertyId)}`
+    );
+  }
+}
     } catch {
       setMessage("Something went wrong. Please try again.");
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   }
 
@@ -40,30 +96,77 @@ export default function InvitationPage({
         Caretaker Invitation
       </h1>
 
-      <p className="mb-6">
-        Sign in or register as a caretaker using the invited
-        email address, then accept the invitation.
-      </p>
+      {loading && <p>Loading invitation...</p>}
 
-      {!accepted && (
+      {!loading && preview && (
         <>
-          <div className="mb-6 flex gap-4">
-            <Link href={`/login?next=${encodeURIComponent(`/invite/${token}`)}`} className="underline">
-              Sign in
-            </Link>
-            <Link href={`/signup?next=${encodeURIComponent(`/invite/${token}`)}`} className="underline">
-              Register
-            </Link>
+          <p className="mb-4">
+            You have been invited to manage a property.
+          </p>
+
+          <div className="mb-6 rounded border p-4">
+            <p>
+              <strong>Owner:</strong> {preview.ownerName}
+            </p>
+            <p>
+              <strong>Location:</strong> {preview.location}
+            </p>
+            <p>
+              <strong>Expires:</strong>{" "}
+              {new Date(preview.expiresAt).toLocaleDateString()}
+            </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleAccept}
-            disabled={loading}
-            className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
-          >
-            {loading ? "Processing..." : "Accept Invitation"}
-          </button>
+          {!completed && (
+            <>
+              <p className="mb-4">
+                Sign in or register using the invited email address.
+                You must verify your email before responding.
+              </p>
+
+              <div className="mb-6 flex gap-4">
+                <Link
+                  href={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}
+                  className="underline"
+                >
+                  Sign in
+                </Link>
+
+                <Link
+                  href={`/signup?next=${encodeURIComponent(`/invite/${token}`)}`}
+                  className="underline"
+                >
+                  Register
+                </Link>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleDecision("accept")}
+                  disabled={processing}
+                  className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
+                >
+                  Accept
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDecision("decline")}
+                  disabled={processing}
+                  className="rounded border px-4 py-2 disabled:opacity-50"
+                >
+                  Decline
+                </button>
+              </div>
+            </>
+          )}
+
+          {completed && (
+              <Link href="/caretaker/dashboard" className="mt-4 block underline">
+                 Continue to Dashboard
+              </Link>
+           )}
         </>
       )}
 
@@ -71,12 +174,6 @@ export default function InvitationPage({
         <p role="status" className="mt-4">
           {message}
         </p>
-      )}
-
-      {accepted && (
-        <Link href="/" className="mt-4 block underline">
-          Continue
-        </Link>
       )}
     </main>
   );

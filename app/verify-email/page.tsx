@@ -1,14 +1,20 @@
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
 import { verifyEmail } from "../actions/emailVerification";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+
   const token = searchParams.get("token");
+  const nextParam = searchParams.get("next");
+
+  const nextPath =
+    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
+      ? nextParam
+      : null;
+
   const [message, setMessage] = useState("Verifying your email...");
 
   useEffect(() => {
@@ -26,14 +32,16 @@ function VerifyEmailContent() {
         if (cancelled) return;
 
         if (result.success) {
-  window.location.href = "/profile";
-  return;
-} else {
-          setMessage(result.error);
+          window.location.href = nextPath ?? "/profile";
+          return;
         }
+
+        setMessage(result.error);
       } catch {
         if (!cancelled) {
-          setMessage("Unable to verify your email right now. Please try again.");
+          setMessage(
+            "Unable to verify your email right now. Please try again."
+          );
         }
       }
     }
@@ -43,7 +51,7 @@ function VerifyEmailContent() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, nextPath]);
 
   return (
     <main style={{ maxWidth: 520, margin: "80px auto", padding: 24 }}>
@@ -52,6 +60,7 @@ function VerifyEmailContent() {
     </main>
   );
 }
+
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={<main>Loading verification page...</main>}>

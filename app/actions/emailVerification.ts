@@ -73,10 +73,9 @@ export async function resendVerificationEmail(
       },
     });
 
-    if (!user || user.role !== "OWNER" || user.emailVerifiedAt) {
+    if (!user || user.emailVerifiedAt) {
       return neutralResult;
     }
-
     // Database-backed cooldown: permit another email only after
     // the previous token has expired or been consumed.
     const activeToken = await prisma.emailVerificationToken.findFirst({

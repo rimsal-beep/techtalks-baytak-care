@@ -3,11 +3,7 @@
 
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
-import {
-  createSessionToken,
-  requireVerifiedUser,
-} from "../../lib/session";
-import { cookies } from "next/headers";
+import { requireVerifiedUser } from "../../lib/session";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { sendVerificationEmail } from "../../lib/emailVerification";
 
@@ -16,6 +12,7 @@ type SignupInput = {
   email: string;
   password: string;
   role: "OWNER" | "CARETAKER";
+  next?: string | null;
 };
 
 type SignupResult =
@@ -47,6 +44,12 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   const password =
     typeof input?.password === "string" ? input.password : "";
   const role = input?.role;
+
+  const nextPath =
+  typeof input?.next === "string" &&
+  /^\/invite\/[a-f0-9]{64}$/.test(input.next)
+    ? input.next
+    : null;
 
   if (!trimmedName) {
     return { success: false, error: "Name is required." };
@@ -83,7 +86,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return { success: false, error: "Please choose a role." };
   }
 
-  try {
+    try {
     const passwordHash = await hashPassword(password);
 
     const user = await prisma.user.create({
@@ -95,40 +98,21 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       },
     });
 
-    if (role === "OWNER") {
-      try {
-        await sendVerificationEmail(user.id, user.email);
-      } catch (emailError) {
-        console.error("Failed to send verification email:", emailError);
-
-        return {
-          success: false,
-          error:
-            "Your account was created, but we couldn't send the verification email. Please try the resend option.",
-        };
-      }
+    try {
+      await sendVerificationEmail(
+        user.id,
+        user.email,
+       role === "CARETAKER" ? nextPath : null
+);
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
 
       return {
-        success: true,
-        data: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
+        success: false,
+        error:
+          "Your account was created, but we couldn't send the verification email. Please try the resend option.",
       };
     }
-
-    // BAY-71: Caretakers must accept a valid invitation.
-    // Preserve the existing caretaker signup/session behavior.
-    const cookieStore = await cookies();
-
-    cookieStore.set("userId", createSessionToken(user.id), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7,
-    });
 
     return {
       success: true,

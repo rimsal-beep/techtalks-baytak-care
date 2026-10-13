@@ -1,12 +1,13 @@
 "use client";
 
 import { FormEvent, Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
 
 function SignupContent() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,19 +57,15 @@ function SignupContent() {
       email,
       password,
       role,
-    });
+      next: role === "CARETAKER" ? nextPath : null,
+   });
 
     if (result.success === false) {
       setError(result.error);
       setLoading(false);
       return;
     }
-
-   if (role === "OWNER") {
-  window.location.href = "/verify-email/sent";
-} else {
-  window.location.href = nextPath ?? "/caretaker/dashboard";
-}
+        window.location.href = "/verify-email/sent";
   }
 
   return (

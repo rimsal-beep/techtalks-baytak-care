@@ -12,7 +12,8 @@ function hashToken(token: string): string {
 
 export async function sendVerificationEmail(
   userId: string,
-  email: string
+  email: string,
+  nextPath: string | null = null
 ): Promise<void> {
   // Generate a secure, unpredictable token.
   const token = randomBytes(32).toString("hex");
@@ -43,9 +44,13 @@ export async function sendVerificationEmail(
   ).replace(/\/+$/, "");
 
   const verificationUrl = new URL("/verify-email", baseUrl);
-  verificationUrl.searchParams.set("token", token);
+verificationUrl.searchParams.set("token", token);
 
-  await sendEmail({
+if (nextPath && /^\/invite\/[a-f0-9]{64}$/.test(nextPath)) {
+  verificationUrl.searchParams.set("next", nextPath);
+}
+
+await sendEmail({
     to: email,
     subject: "Verify your Baytak Care email",
     text: [

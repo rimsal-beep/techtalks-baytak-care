@@ -1,4 +1,3 @@
-
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
@@ -8,17 +7,14 @@ import { getCurrentUser, requireVerifiedUser } from "@/lib/session";
 import { isId, requireUser, lockActiveProperty } from "@/lib/authz";
 
 type ActionResult =
-  | { success: true; message: string }
+  | { success: true; message: string; propertyId?: string }
   | { success: false; error: string };
 
-export async function acceptInvitation(
-  token: string
-): Promise<ActionResult> {
+export async function acceptInvitation(token: string): Promise<ActionResult> {
   if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
     return { success: false, error: "Invalid invitation link." };
   }
 
-  // Keep caretaker invitation acceptance working as before.
   const user = await getCurrentUser();
 
   if (!user) {
@@ -28,7 +24,14 @@ export async function acceptInvitation(
   if (user.role !== "CARETAKER") {
     return {
       success: false,
-      error: "Only caretakers can accept invitations.",
+      error: "Only caretaker accounts can accept invitations.",
+    };
+  }
+
+  if (!user.emailVerifiedAt) {
+    return {
+      success: false,
+      error: "Please verify your email before accepting an invitation.",
     };
   }
 
@@ -58,20 +61,25 @@ export async function acceptInvitation(
         };
       }
 
-      if (
-        invitation.email.toLowerCase() !==
-        user.email.trim().toLowerCase()
-      ) {
+      if (invitation.email.toLowerCase() !== user.email.trim().toLowerCase()) {
         return {
           success: false,
           error: "This invitation belongs to another email address.",
         };
       }
 
-      const property = await tx.$queryRaw<{ id: string }[]>`SELECT "id" FROM "Property"
-        WHERE "id" = ${invitation.propertyId} AND "deletedAt" IS NULL
-          AND "caretakerId" IS NULL FOR UPDATE`;
-      if (property.length !== 1) throw new Error("PROPERTY_UNAVAILABLE");
+      const property = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Property"
+        WHERE "id" = ${invitation.propertyId}
+          AND "deletedAt" IS NULL
+          AND "caretakerId" IS NULL
+        FOR UPDATE
+      `;
+
+      if (property.length !== 1) {
+        throw new Error("PROPERTY_UNAVAILABLE");
+      }
 
       const accepted = await tx.invitation.updateMany({
         where: {
@@ -108,19 +116,156 @@ export async function acceptInvitation(
       return {
         success: true,
         message: "Invitation accepted successfully.",
+        propertyId: invitation.propertyId,
       };
     });
   } catch {
     return {
       success: false,
       error:
-        "Unable to accept invitation. It may already be used, expired, or the caretaker may already be assigned.",
+        "Unable to accept invitation. It may already be used, expired, or the property may already have a caretaker.",
     };
   }
 }
 
+export async function declineInvitation(token: string): Promise<ActionResult> {
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+    return { success: false, error: "Invalid invitation link." };
+  }
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return { success: false, error: "Please sign in first." };
+  }
+
+  if (user.role !== "CARETAKER") {
+    return {
+      success: false,
+      error: "Only caretaker accounts can decline invitations.",
+    };
+  }
+
+  if (!user.emailVerifiedAt) {
+    return {
+      success: false,
+      error: "Please verify your email before declining an invitation.",
+    };
+  }
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const invitation = await tx.invitation.findUnique({
+        where: { tokenHash },
+        select: { id: true, propertyId: true },
+      });
+
+      if (!invitation) {
+        return { count: 0 };
+      }
+
+      // Use the same property lock as invitation acceptance.
+      const property = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id"
+        FROM "Property"
+        WHERE "id" = ${invitation.propertyId}
+          AND "deletedAt" IS NULL
+          AND "caretakerId" IS NULL
+        FOR UPDATE
+      `;
+
+      if (property.length !== 1) {
+        return { count: 0 };
+      }
+
+      return tx.invitation.updateMany({
+        where: {
+          id: invitation.id,
+          tokenHash,
+          email: {
+            equals: user.email.trim(),
+            mode: "insensitive",
+          },
+          status: "PENDING",
+          expiresAt: { gt: new Date() },
+        },
+        data: {
+          status: "DECLINED",
+        },
+      });
+    });
+
+    if (result.count !== 1) {
+      return {
+        success: false,
+        error: "Invitation is invalid, expired, or already handled.",
+      };
+    }
+
+    return {
+      success: true,
+      message: "Invitation declined successfully.",
+    };
+  } catch {
+    return {
+      success: false,
+      error: "Unable to decline invitation.",
+    };
+  }
+}
+
+export async function getInvitationPreview(token: string) {
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+    return { success: false as const, error: "Invalid invitation link." };
+  }
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
+  const invitation = await prisma.invitation.findUnique({
+    where: { tokenHash },
+    select: {
+      status: true,
+      expiresAt: true,
+      invitedBy: {
+        select: { name: true },
+      },
+      property: {
+        select: {
+          city: true,
+          deletedAt: true,
+          caretakerId: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !invitation ||
+    invitation.status !== "PENDING" ||
+    invitation.expiresAt <= new Date() ||
+    invitation.property.deletedAt !== null ||
+    invitation.property.caretakerId !== null
+  ) {
+    return {
+      success: false as const,
+      error: "This invitation is invalid, expired, or no longer available.",
+    };
+  }
+
+  return {
+    success: true as const,
+    preview: {
+      ownerName: invitation.invitedBy.name,
+      location: invitation.property.city ?? "Location not specified",
+      expiresAt: invitation.expiresAt.toISOString(),
+    },
+  };
+}
+
 export async function revokeInvitation(
-  invitationId: string
+  invitationId: string,
 ): Promise<ActionResult> {
   const auth = await requireUser(["OWNER"]);
 
@@ -152,7 +297,8 @@ export async function revokeInvitation(
     if (revoked.count !== 1) {
       return {
         success: false,
-        error: "Invitation unavailable. It may have already changed or expired.",
+        error:
+          "Invitation unavailable. It may have already changed or expired.",
       };
     }
 
@@ -163,7 +309,7 @@ export async function revokeInvitation(
 }
 
 export async function removeCaretaker(
-  propertyId: string
+  propertyId: string,
 ): Promise<ActionResult> {
   const auth = await requireVerifiedUser();
 
@@ -210,7 +356,7 @@ export async function removeCaretaker(
 
 export async function resendInvitation(
   propertyId: string,
-  emailInput: string
+  emailInput: string,
 ): Promise<ActionResult> {
   const auth = await requireVerifiedUser();
 
@@ -223,19 +369,13 @@ export async function resendInvitation(
 
   const owner = auth.user;
 
-  if (
-    typeof propertyId !== "string" ||
-    typeof emailInput !== "string"
-  ) {
+  if (typeof propertyId !== "string" || typeof emailInput !== "string") {
     return { success: false, error: "Invalid invitation details." };
   }
 
   const email = emailInput.trim().toLowerCase();
 
-  if (
-    !propertyId.trim() ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-  ) {
+  if (!propertyId.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { success: false, error: "Invalid property or email." };
   }
 
@@ -296,9 +436,7 @@ export async function resendInvitation(
   try {
     baseUrl = new URL(appUrl);
 
-    const isLocalhost = ["localhost", "127.0.0.1"].includes(
-      baseUrl.hostname
-    );
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(baseUrl.hostname);
 
     if (
       (baseUrl.protocol !== "https:" &&
@@ -359,8 +497,7 @@ export async function resendInvitation(
     } catch {
       return {
         success: false,
-        error:
-          "Email submission failed. You can retry after one minute.",
+        error: "Email submission failed. You can retry after one minute.",
       };
     }
 

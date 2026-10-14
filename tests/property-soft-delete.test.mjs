@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.test', override: true });
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -12,10 +13,28 @@ import { PrismaClient } from '../generated/prisma/client.ts';
 // npx tsx --test tests/property-soft-delete.test.mjs
 // Production authorization, mutations and page queries against local PostgreSQL.
 // Only session/framework/email boundaries are substituted; emails are never sent.
+
 const root = process.cwd();
 const require = createRequire(import.meta.url);
-assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(new URL(process.env.DATABASE_URL).hostname));
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+
+const testUrl = new URL(process.env.DATABASE_URL);
+
+assert.ok(
+  ['localhost', '127.0.0.1', '[::1]'].includes(testUrl.hostname),
+  'Tests must use a local database.'
+);
+
+assert.equal(
+  testUrl.pathname.slice(1),
+  'baytak_care_test',
+  'Safety stop: tests must use baytak_care_test.'
+);
+
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+  }),
+});
 // Process-local test configuration; never change the application's .env.
 process.env.SESSION_SECRET = 'phase6-isolated-test-secret-at-least-32-characters';
 process.env.APP_URL = 'http://localhost:3000';
@@ -78,10 +97,16 @@ function hooked({ beforeLock, afterLock, beforeDelete, failRevoke, captureQuerie
   return new Proxy(prisma, { get(target, key) {
     if (key === '$transaction') return callback => target.$transaction(tx => callback(new Proxy(tx, {
       get(t, k) {
-        if (k === '$queryRaw') return async (...args) => {
+              if (k === '$queryRaw') return async (...args) => {
           if (beforeLock) await beforeLock();
+
           const rows = await t.$queryRaw(...args);
-          if (afterLock) await afterLock();
+          const query = args[0]?.join?.(' ') ?? '';
+
+          if (afterLock && query.includes('"Property"')) {
+            await afterLock();
+          }
+
           return rows;
         };
         if (k === 'property') return new Proxy(t.property, { get(model, method) {
@@ -419,6 +444,7 @@ test('delete control opens confirmation only, cancel does not mutate, and double
   const jsx = (type, props) => ({ type, props });
   const exports = {};
   new Function('require', 'exports', code)(id => {
+    if (id.endsWith('.module.css')) return new Proxy({}, { get: (_, key) => String(key) });
     if (id === 'react') return hooks;
     if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx };
     if (id === 'next/navigation') return { useRouter: () => ({ replace: url => navigation.push(url), refresh: () => navigation.push('refresh') }) };

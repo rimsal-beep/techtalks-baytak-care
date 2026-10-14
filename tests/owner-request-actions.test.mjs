@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.test', override: true });
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -14,8 +15,16 @@ import { PrismaClient } from '../generated/prisma/client.ts';
 // PostgreSQL operations use production code. Unique fixtures are removed below.
 const root = process.cwd();
 const require = createRequire(import.meta.url);
-const url = new URL(process.env.DATABASE_URL);
-assert.ok(['localhost', '127.0.0.1', '[::1]'].includes(url.hostname), 'Use a local test database.');
+const testUrl = new URL(process.env.DATABASE_URL);
+assert.ok(
+  ['localhost', '127.0.0.1', '[::1]'].includes(testUrl.hostname),
+  'Tests must use a local database.'
+);
+assert.equal(
+  testUrl.pathname.slice(1),
+  'baytak_care_test',
+  'Safety stop: tests must use baytak_care_test.'
+);
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 let currentUser = null;
 const refreshed = [];

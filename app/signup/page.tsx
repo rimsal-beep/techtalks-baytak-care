@@ -67,7 +67,7 @@ function SignupContent() {
       setLoading(false);
       return;
     }
-        window.location.href = "/verify-email/sent";
+         window.location.href = "/verify-email/sent";
   }
 
   return (
@@ -130,7 +130,7 @@ function SignupContent() {
               id="email"
               type="email"
               value={email}
-              
+
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required

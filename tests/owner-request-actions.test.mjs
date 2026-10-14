@@ -129,41 +129,29 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
     propertyIds.push(b.id);
     currentUser = ownerA;
 
-    await t.test('owner edit persists the six editable fields and keeps protected values', async () => {
-      const r = await request(a);
-      assert.equal((await actions.editRequest(r.id, valid)).success, true);
-      const changed = await read(r.id);
-      assert.equal(changed.title, 'Updated leak');
-      assert.equal(changed.description, 'New description');
-      assert.equal(changed.requestType, 'ELECTRICAL');
-      assert.equal(changed.estimatedCost.toString(), '45.75');
-      assert.equal(changed.currency, 'LBP');
-      assert.equal(changed.estimateNote, 'Revised estimate');
-      const protectedFields = row => {
-        const copy = snapshot(row);
-        for (const key of ['title', 'description', 'requestType', 'estimatedCost', 'currency', 'estimateNote', 'updatedAt']) delete copy[key];
-        return copy;
-      };
-      assert.deepEqual(protectedFields(changed), protectedFields(r));
-      assert.deepEqual((await logs(r.id)).map(l => [l.action, l.previousStatus, l.newStatus, l.performedById]),
-        [['Request edited', 'PENDING_APPROVAL', 'PENDING_APPROVAL', ownerA.id]]);
-      assert.ok(refreshed.some(([p]) => p === '/properties/' + a.id));
-      assert.ok(refreshed.some(([p]) => p === '/activity'));
-    });
+    await t.test('owner cannot edit a request because editing is disabled', async () => {
+  const r = await request(a);
+  const before = snapshot(r);
 
-    await t.test('owner cancellation retains the row, metadata, prior history and one cancellation log', async () => {
-      const r = await request(a);
-      assert.equal((await actions.editRequest(r.id, valid)).success, true);
-      const before = snapshot(await read(r.id));
-      assert.equal((await actions.cancelRequest(r.id)).success, true);
-      const after = snapshot(await read(r.id));
-      assert.equal(after.status, 'CANCELLED');
-      delete before.status; delete after.status; delete before.updatedAt; delete after.updatedAt;
-      assert.deepEqual(after, before);
-      assert.equal((await logs(r.id)).length, 2);
-      assert.equal((await actions.cancelRequest(r.id)).success, true);
-      assert.equal((await logs(r.id)).filter(l => l.newStatus === 'CANCELLED').length, 1);
-    });
+  const result = await actions.editRequest(r.id, valid);
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'Requests can no longer be edited.');
+  assert.deepEqual(snapshot(await read(r.id)), before);
+  assert.equal((await logs(r.id)).length, 0);
+});
+
+    await t.test('owner cannot cancel a request because cancellation is disabled', async () => {
+  const r = await request(a);
+  const before = snapshot(r);
+
+  const result = await actions.cancelRequest(r.id);
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'Requests can no longer be cancelled.');
+  assert.deepEqual(snapshot(await read(r.id)), before);
+  assert.equal((await logs(r.id)).length, 0);
+});
 
     for (const role of ['Owner B', 'caretaker', 'anonymous', 'unverified owner']) {
       await t.test(role + ' cannot edit or cancel Owner A request', async () => {
@@ -197,7 +185,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
       await t.test(status + ' is not editable; only existing CANCELLED is idempotently cancellable', async () => {
         const r = await request(a, status);
         assert.equal((await actions.editRequest(r.id, valid)).success, false);
-        assert.equal((await actions.cancelRequest(r.id)).success, status === 'CANCELLED');
+        assert.equal((await actions.cancelRequest(r.id)).success, false);
         assert.deepEqual(snapshot(await read(r.id)), snapshot(r));
         assert.equal((await logs(r.id)).length, 0);
       });
@@ -215,7 +203,7 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
         property: { connect: { id: b.id } }, reportedBy: { connect: { id: ownerB.id } },
         approvedBy: { connect: { id: ownerB.id } }, activityLogs: { deleteMany: {} },
       };
-      assert.equal((await actions.editRequest(r.id, injected)).success, true);
+      assert.equal((await actions.editRequest(r.id, injected)).success, false);
       const changed = snapshot(await read(r.id));
       const before = snapshot(r);
       for (const key of ['title', 'description', 'requestType', 'estimatedCost', 'currency', 'estimateNote', 'updatedAt']) {
@@ -240,28 +228,22 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
         assert.equal((await logs(r.id)).length, 0);
       });
     }
-    await t.test('zero estimate and clearing optional text persist without changing pending status', async () => {
-      const r = await request(a);
-      assert.equal((await actions.editRequest(r.id, { ...valid, estimatedCost: 0, description: '', estimateNote: '' })).success, true);
-      const changed = await read(r.id);
-      assert.equal(changed.estimatedCost.toString(), '0');
-      assert.equal(changed.description, null); assert.equal(changed.estimateNote, null);
-      assert.equal(changed.status, 'PENDING_APPROVAL');
-    });
+    await t.test('zero estimate input cannot bypass disabled editing', async () => {
+  const r = await request(a);
+  const before = snapshot(r);
+
+  const result = await actions.editRequest(r.id, {
+    ...valid,
+    estimatedCost: 0,
+  });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error, 'Requests can no longer be edited.');
+  assert.deepEqual(snapshot(await read(r.id)), before);
+  assert.equal((await logs(r.id)).length, 0);
+});
 
     for (const method of ['editRequest', 'cancelRequest']) {
-      for (const status of ['APPROVED', 'COMPLETED']) {
-        await t.test('stale ' + method + ' loses to a current ' + status + ' decision at the write', async () => {
-          const r = await request(a);
-          const racing = loadActions(transactionHook({ beforeWrite: async () => {
-            await prisma.maintenanceRequest.update({ where: { id: r.id }, data: { status } });
-          } }));
-          assert.equal((await racing[method](r.id, valid)).success, false);
-          const changed = await read(r.id);
-          assert.equal(changed.status, status); assert.equal(changed.title, r.title);
-          assert.equal((await logs(r.id)).length, 0);
-        });
-      }
       await t.test(method + ' rechecks ownership if it changes after authorization', async () => {
         const r = await request(a);
         const racing = loadActions(transactionHook({ beforeLock: async () => {
@@ -282,20 +264,19 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
       });
     }
 
-    await t.test('two simultaneous cancellations both succeed and record history once', async () => {
-      const r = await request(a);
-      let arrivals = 0;
-      let release;
-      const ready = new Promise(resolve => { release = resolve; });
-      const concurrent = loadActions(transactionHook({ beforeLock: async () => {
-        if (++arrivals === 2) release();
-        await ready;
-      } }));
-      const results = await Promise.all([concurrent.cancelRequest(r.id), concurrent.cancelRequest(r.id)]);
-      assert.ok(results.every(result => result.success));
-      assert.equal((await read(r.id)).status, 'CANCELLED');
-      assert.equal((await logs(r.id)).length, 1);
-    });
+    await t.test('simultaneous cancellations remain disabled without changing the request', async () => {
+  const r = await request(a);
+  const before = snapshot(r);
+
+  const results = await Promise.all([
+    actions.cancelRequest(r.id),
+    actions.cancelRequest(r.id),
+  ]);
+
+  assert.equal(results.every((result) => result.success === false), true);
+  assert.deepEqual(snapshot(await read(r.id)), before);
+  assert.equal((await logs(r.id)).length, 0);
+});
 
     await t.test('missing and malformed request IDs follow existing denial conventions', async () => {
       for (const id of [randomUUID(), '', 'x'.repeat(65), null, {}, 42]) {
@@ -318,17 +299,22 @@ test('BAY-74 owner request actions against local PostgreSQL', async t => {
       currentUser = ownerA;
     });
 
-    await t.test('existing approval remains valid and refuses cancelled requests', async () => {
-      const pending = await request(a);
-      assert.equal((await actions.approveRequest(pending.id)).success, true);
-      assert.equal((await read(pending.id)).status, 'APPROVED');
-      assert.equal((await actions.editRequest(pending.id, valid)).success, false);
-      const cancelled = await request(a);
-      assert.equal((await actions.cancelRequest(cancelled.id)).success, true);
-      assert.equal((await actions.approveRequest(cancelled.id)).success, false);
-      assert.equal((await actions.rejectRequest(cancelled.id, 'No repair needed')).success, false);
-      assert.equal((await read(cancelled.id)).status, 'CANCELLED');
-    });
+    await t.test('approval remains valid and refuses cancelled requests', async () => {
+  const pending = await request(a);
+
+  assert.equal((await actions.editRequest(pending.id, valid)).success, false);
+  assert.equal((await actions.cancelRequest(pending.id)).success, false);
+
+  const cancelled = await request(a, 'CANCELLED');
+
+  assert.equal((await actions.cancelRequest(cancelled.id)).success, false);
+  assert.equal((await actions.approveRequest(cancelled.id)).success, false);
+  assert.equal(
+    (await actions.rejectRequest(cancelled.id, 'No repair needed')).success,
+    false,
+  );
+  assert.equal((await read(cancelled.id)).status, 'CANCELLED');
+});
   } finally {
     currentUser = null;
     // Exact UUID fixture sets only; no existing application rows are deleted.

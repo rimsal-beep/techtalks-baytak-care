@@ -335,7 +335,7 @@ test('BAY-74 Phase 6 property soft-delete against local PostgreSQL', async t => 
       assert.equal((await read(p.id)).caretakerId, null);
       assert.equal((await prisma.invitation.findUniqueOrThrow({ where: { id: forged.id } })).status, 'PENDING');
     });
-    for (const method of ['createMaintenanceRequest', 'editRequest', 'cancelRequest', 'approveRequest', 'rejectRequest', 'inviteCaretaker', 'resendInvitation', 'completeChecklistItem', 'undoChecklistItem', 'startWork', 'completeJob']) {
+    for (const method of ['createMaintenanceRequest', 'approveRequest', 'rejectRequest', 'inviteCaretaker', 'resendInvitation', 'completeChecklistItem', 'undoChecklistItem', 'startWork', 'completeJob']) {
       await t.test('stale ' + method + ' loses to deletion before its transaction lock', async () => {
         const isCaretaker = ['completeChecklistItem', 'undoChecklistItem', 'startWork', 'completeJob'].includes(method);
         const c = await property(ownerA, isCaretaker);
@@ -372,7 +372,6 @@ test('BAY-74 Phase 6 property soft-delete against local PostgreSQL', async t => 
       const key = randomUUID(); const input = { ...fields, propertyId: c.id, idempotencyKey: key };
       const first = await actions.createMaintenanceRequest(input); assert.equal(first.success, true);
       const second = await actions.createMaintenanceRequest(input); assert.equal(second.success, true); assert.equal(second.duplicate, true); assert.equal(second.requestId, first.requestId);
-      assert.equal((await actions.editRequest(first.requestId, { ...fields, title: tag + ' edit' })).success, true);
       assert.equal((await actions.approveRequest(first.requestId)).success, true);
       currentUser = caretaker;
       assert.equal((await actions.startWork(first.requestId)).success, true);
@@ -381,7 +380,12 @@ test('BAY-74 Phase 6 property soft-delete against local PostgreSQL', async t => 
       const done = await prisma.checklistItem.findFirstOrThrow({ where: { propertyId: c.id } });
       assert.equal((await actions.undoChecklistItem({ propertyId: c.id, itemId: done.id, text: done.text, undoToken: actions.undo.checklistUndoToken(done) })).success, true);
       currentUser = ownerA;
-      const cancel = await request(c); assert.equal((await actions.cancelRequest(cancel.id)).success, true); assert.equal((await actions.cancelRequest(cancel.id)).success, true);
+      const cancel = await request(c);
+assert.equal((await actions.cancelRequest(cancel.id)).success, false);
+assert.equal(
+  (await prisma.maintenanceRequest.findUniqueOrThrow({ where: { id: cancel.id } })).status,
+  'PENDING_APPROVAL'
+);
       assert.equal((await actions.deleteProperty(c.id)).success, true);
     });
     await t.test('active invitations retain duplicate issuance/resend/revoke/accept semantics', async () => {
@@ -400,14 +404,24 @@ test('BAY-74 Phase 6 property soft-delete against local PostgreSQL', async t => 
       currentUser = ownerA; assert.equal((await actions.deleteProperty(c.id)).success, true);
       assert.equal((await prisma.invitation.findUniqueOrThrow({ where: { id: accept.id } })).status, 'ACCEPTED');
     });
-    await t.test('active simultaneous request cancellation remains safe and records one log', async () => {
-      const c = await property(); const r = await request(c);
-      let arrivals = 0, release; const ready = new Promise(resolve => { release = resolve; });
-      const concurrent = loadProduction(hooked({ beforeLock: async () => { if (++arrivals === 2) release(); await ready; } }));
-      const results = await Promise.all([concurrent.cancelRequest(r.id), concurrent.cancelRequest(r.id)]);
-      assert.ok(results.every(x => x.success));
-      assert.equal(await prisma.activityLog.count({ where: { maintenanceRequestId: r.id, action: 'Request cancelled' } }), 1);
-    });
+    await t.test('active request cancellation is disabled without changing status or history', async () => {
+  const c = await property();
+  const r = await request(c);
+
+  const result = await actions.cancelRequest(r.id);
+
+  assert.equal(result.success, false);
+  assert.equal(
+    (await prisma.maintenanceRequest.findUniqueOrThrow({ where: { id: r.id } })).status,
+    'PENDING_APPROVAL'
+  );
+  assert.equal(
+    await prisma.activityLog.count({
+      where: { maintenanceRequestId: r.id, action: 'Request cancelled' },
+    }),
+    0
+  );
+});
   } finally {
     currentUser = null;
     // Delete only exact UUID fixtures created by this test, never application data.

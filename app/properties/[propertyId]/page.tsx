@@ -6,7 +6,6 @@ import Link from "next/link";
 import DashboardLayout from "@/app/Components/DashBoardCom/DashBoardLayout";
 import PropertyCaretakerInvite from "@/app/View/PropertyCaretakerInvite";
 import ApprovalActions from "@/app/requests/[requestId]/ApprovalActions";
-import OwnerRequestActions from "@/app/requests/[requestId]/OwnerRequestActions";
 import { Icon, PropertyArt } from "../PropertyUI";
 import {
   CHECKLIST_ITEMS,
@@ -782,7 +781,6 @@ export default async function PropertyDetailsPage({
               {selected.status === "PENDING_APPROVAL" ? (
                 <div>
                   <ApprovalActions requestId={selected.id} />
-                  <OwnerRequestActions requestId={selected.id} />
                 </div>
               ) : (
                 <span className={s.result}>{RESULT_TEXT[selected.status] ?? ""}</span>

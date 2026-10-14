@@ -220,9 +220,18 @@ function SignupContent() {
       </form>
 
       <p>
-  <span>Already have an account?</span>{" "}
-  <Link href="/login">Log in</Link>
-</p>
+        <span>Already have an account?</span>{" "}
+        <a
+          href={
+            nextPath
+              ? `/login?next=${encodeURIComponent(nextPath)}`
+              : "/login"
+          }
+          className={f.foot}
+        >
+          Log in
+        </a>
+      </p>
     </AuthShell>
   );
 }

@@ -106,12 +106,13 @@ export default async function HomePage() {
     const status = propertyStatus(Boolean(property.caretaker), summary.awaiting, summary.inProgress);
 
     return {
-      id: property.id,
-      address: property.address,
-      city: property.city,
-      statusLabel: status.label,
-      tone: status.tone,
-    };
+  id: property.id,
+  address: property.address,
+  city: property.city,
+  caretakerName: property.caretaker?.name ?? null,
+  statusLabel: status.label,
+  tone: status.tone,
+};
   });
 
   return (

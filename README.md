@@ -64,15 +64,6 @@ npm install
 
 Create a `.env` file in the project root:
 
-```env
-DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/baytak"
-SESSION_SECRET="a-random-string-of-at-least-32-characters"
-APP_URL="http://localhost:3000"
-
-# SMTP settings for verification and invitation emails.
-# Use the variable names listed in .env.example.
-```
-
 > Never commit `.env`. It is listed in `.gitignore`.
 
 Set up the database and start the app:

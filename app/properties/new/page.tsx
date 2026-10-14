@@ -1,3 +1,4 @@
+import BrandMark from "@/app/Components/BrandMark";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
@@ -23,12 +24,8 @@ export default async function NewPropertyPage() {
     <main className={styles.page}>
       <div className={styles.container}>
         <header className={styles.header}>
-          <div className={styles.brand}>
-            <span className={styles.brandIcon} aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="20" height="20">
-                <path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" />
-              </svg>
-            </span>
+                    <div className={styles.brand}>
+            <BrandMark size={28} />
             <span className={styles.brandName}>Baytak Care</span>
           </div>
           <h1 className={styles.title}>Add a property</h1>

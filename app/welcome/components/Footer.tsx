@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { Logo } from "./Svg";
+import { CONTACT_EMAIL } from "@/lib/siteInfo";
 
 export default function Footer() {
   return (
@@ -30,7 +32,10 @@ export default function Footer() {
               <a href="#about">About</a>
             </li>
             <li>
-              <a href="#final">Contact</a>
+              <a href={`mailto:${CONTACT_EMAIL}`}>Contact us</a>
+            </li>
+            <li>
+              <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
             </li>
           </ul>
         </div>
@@ -38,17 +43,17 @@ export default function Footer() {
           <h5 className="mono">Legal</h5>
           <ul>
             <li>
-              <a href="#top">Privacy</a>
+              <Link href="/privacy">Privacy</Link>
             </li>
             <li>
-              <a href="#top">Terms</a>
+              <Link href="/terms">Terms</Link>
             </li>
           </ul>
         </div>
       </div>
-      
+
       <div className="legal">
-        <span>© 2026 Baytak Care.</span>
+        <span>&copy; 2026 Baytak Care. All rights reserved.</span>
         <span>Made between Beirut and everywhere else.</span>
       </div>
     </div>

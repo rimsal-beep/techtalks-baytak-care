@@ -9,12 +9,7 @@ export default function Hero() {
     <div className="wrap">
       <div className="grid">
         <div className="hero-copy">
-          <span className="eyebrow fade-seq" style={{ "--i": "-3" } as CSSProperties}>
-            <span className="pulse">
-              <i></i>
-            </span>
-            For homeowners living away from Lebanon
-          </span>
+         
           <h1 className="split" data-split="" style={{ "--d": ".9s" } as CSSProperties}>{"Your home, "}<em className="s">cared for</em>{" from anywhere."}</h1>
           <p className="lede fade-seq" style={{ "--i": "0" } as CSSProperties}>Baytak Care gives you one simple place to monitor, maintain, and stay connected to your property — even when you’re miles away.</p>
           <div className="ctas fade-seq" style={{ "--i": "1" } as CSSProperties}>

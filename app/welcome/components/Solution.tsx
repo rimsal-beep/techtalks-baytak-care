@@ -23,9 +23,9 @@ export default function Solution() {
           </div>
           <div className="viewport vp-sol">
             <picture>
-              <source media="(max-width: 1024px)" srcSet="/landing/sol-phone.webp" />
+                                         <source media="(max-width: 1024px)" srcSet="/landing/sol-phone.webp?v=2" />
               {/* eslint-disable-next-line @next/next/no-img-element -- static screenshot */}
-              <img src="/landing/sol-desktop.webp" alt="Baytak Care owner dashboard preview" width={1440} height={900} loading="lazy" decoding="async" />
+                                       <img src="/landing/sol-desktop.webp?v=2" alt="Baytak Care owner dashboard preview" width={1440} height={900} loading="lazy" decoding="async" />
             </picture>
           </div>
         </div>

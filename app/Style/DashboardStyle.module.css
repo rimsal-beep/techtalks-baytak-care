@@ -509,3 +509,42 @@
     display: none;
   }
 }
+/* ===== Responsive fixes (UI task) ===== */
+.mainContent {
+  flex: 1;
+  min-width: 0; /* lets the content shrink instead of overflowing */
+}
+
+/* Tablet: slimmer sidebar */
+@media (min-width: 701px) and (max-width: 900px) {
+  .sidebar { width: 200px; }
+}
+
+/* Phone: logo + log out on the first row, menu on the second row */
+@media (max-width: 700px) {
+  .Body .sidebar {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 12px 16px;
+  }
+  .sidebarBrand { order: 1; flex: 1; min-width: 0; margin-right: 0; }
+  .sidebarFoot  { order: 2; margin-left: auto; }
+  .sidebarNav {
+    order: 3;
+    flex: 1 0 100%;
+    gap: 4px;
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .navItem,
+  .activeNav {
+    flex: 1 1 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px 4px;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+  }
+}

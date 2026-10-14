@@ -1,0 +1,74 @@
+.page {
+  min-height: 100vh;
+  background: #F7F6F3;
+  padding: 48px 16px 80px;
+  color: #181A1B;
+}
+
+.card {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 36px;
+  border: 1px solid #E4E1D9;
+  border-radius: 16px;
+  background: #FFFFFF;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: #1F4E79;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.title {
+  margin: 0 0 6px;
+  color: #14213D;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.updated {
+  margin: 0 0 28px;
+  color: #8B8D89;
+  font-size: 14px;
+}
+
+.body h2 {
+  margin: 28px 0 8px;
+  color: #14213D;
+  font-size: 19px;
+}
+
+.body p,
+.body li {
+  color: #3D3F3C;
+  font-size: 15.5px;
+  line-height: 1.7;
+}
+
+.body p {
+  margin: 0 0 12px;
+}
+
+.body ul {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.body a {
+  color: #1F4E79;
+}
+
+@media (max-width: 600px) {
+  .card { padding: 28px 20px; }
+  .title { font-size: 28px; }
+}

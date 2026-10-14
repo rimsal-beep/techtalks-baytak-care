@@ -113,15 +113,15 @@ export default function ApprovalActions({ requestId }: ApprovalActionsProps) {
     }
   }
 
-  return (
-    <section className="mb-5 rounded-xl border border-slate-200 bg-white p-5">
+   return (
+    <section className={styles.approvalBox}>
       {!completed && (
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className={styles.approvalRow}>
           <button
             type="button"
             onClick={handleApprove}
             disabled={loading}
-            className="rounded-xl bg-blue-700 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className={styles.approveBtn}
           >
             {loading ? "Processing..." : "Approve"}
           </button>
@@ -130,7 +130,7 @@ export default function ApprovalActions({ requestId }: ApprovalActionsProps) {
             type="button"
             onClick={openRejectDialog}
             disabled={loading}
-            className="rounded-xl border border-red-300 bg-white px-6 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className={styles.rejectBtn}
           >
             {loading ? "Processing..." : "Reject"}
           </button>
@@ -195,24 +195,24 @@ export default function ApprovalActions({ requestId }: ApprovalActionsProps) {
           </div>
 
           {error && (
-            <p id={`${id}-error`} role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            <p id={`${id}-error`} role="alert" className={styles.errorBox}>
               {error}
             </p>
           )}
 
-          <div className="flex justify-end gap-3">
+          <div className={styles.dialogActions}>
             <button
               type="button"
               onClick={closeRejectDialog}
               disabled={loading}
-              className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className={styles.dialogCancel}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="rounded-xl border border-red-300 bg-white px-6 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              className={styles.rejectSubmit}
             >
               {loading ? "Rejecting..." : "Reject"}
             </button>
@@ -221,13 +221,13 @@ export default function ApprovalActions({ requestId }: ApprovalActionsProps) {
       </dialog>
 
       {message && (
-        <div role="status" className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+        <div role="status" className={styles.successBox}>
           {message}
         </div>
       )}
 
       {error && !dialogOpen && (
-        <div role="alert" className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+        <div role="alert" className={styles.errorBox}>
           {error}
         </div>
       )}

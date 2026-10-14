@@ -67,7 +67,22 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
           error: "This invitation belongs to another email address.",
         };
       }
+ await tx.$queryRaw`
+        SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE
+      `;
 
+      const alreadyAssigned = await tx.property.findFirst({
+        where: { caretakerId: user.id, deletedAt: null },
+        select: { id: true },
+      });
+
+      if (alreadyAssigned) {
+        return {
+          success: false,
+          error:
+            "You already look after a property. A caretaker can only be assigned to one property at a time.",
+        };
+      }
       const property = await tx.$queryRaw<{ id: string }[]>`
         SELECT "id"
         FROM "Property"

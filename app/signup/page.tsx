@@ -7,6 +7,7 @@ import AuthShell from "../Components/AuthShell";
 import Link from "next/link";
 import f from "../Components/AuthShell.module.css";
 
+
 function SignupContent() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -19,7 +20,10 @@ function SignupContent() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
   const nextPath =
-    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam) ? nextParam : null;
+    nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
+      ? nextParam
+      : null;
+  const MIN_PASSWORD_LENGTH = 6;   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +72,7 @@ function SignupContent() {
       setLoading(false);
       return;
     }
-    router.push("/verify-email/sent");
+         window.location.href = "/verify-email/sent";
   }
 
   return (
@@ -145,6 +149,7 @@ function SignupContent() {
               id="email"
               type="email"
               value={email}
+
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
@@ -162,8 +167,8 @@ function SignupContent() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              minLength={8}
+              placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               suppressHydrationWarning
             />
@@ -188,7 +193,7 @@ function SignupContent() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Re-enter your password"
-              minLength={8}
+              minLength={MIN_PASSWORD_LENGTH}
               required
               suppressHydrationWarning
             />

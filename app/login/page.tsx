@@ -34,6 +34,7 @@ function LoginContent() {
             type="email"
             placeholder="Enter your email"
             required
+            suppressHydrationWarning
           />
         </div>
 

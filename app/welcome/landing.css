@@ -509,3 +509,24 @@
 
 /* three stats: let the last one span the full row instead of leaving a hole */
 .bcl .stats .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* ---------- Cursor (modern): small dot + thin ring, no heart, no glow ---------- */
+.bcl .cursor .dot svg { display: none; }
+.bcl .cursor .dot { width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--navy); transition: background .2s, opacity .2s; }
+.bcl .cursor .ring { width: 34px; height: 34px; margin: -17px 0 0 -17px; background: transparent; box-shadow: none; border: 1.5px solid rgba(20, 33, 61, .35);
+  transition: width .3s var(--ease), height .3s var(--ease), margin .3s var(--ease), background .25s, border-color .25s; }
+.bcl .cursor.hover .ring { width: 52px; height: 52px; margin: -26px 0 0 -26px; background: rgba(20, 33, 61, .06); box-shadow: none; border-color: rgba(20, 33, 61, .55); }
+.bcl .cursor.down .ring { width: 26px; height: 26px; margin: -13px 0 0 -13px; }
+.bcl .cursor.label .ring { width: 84px; height: 84px; margin: -42px 0 0 -42px; background: var(--navy); border-color: transparent; box-shadow: none; }
+.bcl .cursor.label .dot { opacity: 0; }
+.bcl .cursor.dark .dot { background: var(--beige); }
+.bcl .cursor.dark .ring { border-color: rgba(247, 246, 243, .45); }
+.bcl .cursor.dark.hover .ring { background: rgba(255, 255, 255, .1); border-color: rgba(247, 246, 243, .7); }
+.bcl .cursor.dark.label .ring { background: var(--beige); }
+/* ---------- Mobile nav fix: bar fits the screen, menu has side padding ---------- */
+@media (max-width: 560px) {
+  .bcl .nav .bar { gap: 10px; min-width: 0; }
+  .bcl .nav .bar .brand { min-width: 0; font-size: 12.5px; letter-spacing: .22em; white-space: nowrap; }
+  .bcl .nav .right .btn { display: none; }
+  .bcl .nav .menu-btn { flex: none; }
+  .bcl .mnav { padding: 104px max(24px, var(--gutter)) 40px; }
+}

@@ -1,0 +1,106 @@
+.wrap {
+  margin: 16px 0;
+  justify-self: start;
+  align-self: start;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid #F3D4D0;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: #B42318;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.trigger:hover {
+  border-color: #E9B8B2;
+  background: #FAEAE9;
+}
+
+.confirm {
+  max-width: 520px;
+  padding: 16px 18px;
+  border: 1px solid #F3D4D0;
+  border-radius: 14px;
+  background: #FDF5F4;
+}
+
+.confirmTitle {
+  margin: 0 0 6px;
+  color: #7A1B12;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.confirmText {
+  margin: 0 0 14px;
+  color: #5B5D5A;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.danger,
+.cancel {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.danger {
+  border: 0;
+  background: #B42318;
+  color: #FFFFFF;
+}
+
+.danger:hover:not(:disabled) {
+  background: #912018;
+}
+
+.cancel {
+  border: 1px solid #E4E1D9;
+  background: #FFFFFF;
+  color: #181A1B;
+}
+
+.cancel:hover:not(:disabled) {
+  border-color: #1F4E79;
+}
+
+.danger:disabled,
+.cancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.trigger:focus-visible,
+.danger:focus-visible,
+.cancel:focus-visible {
+  outline: 2px solid #1F4E79;
+  outline-offset: 2px;
+}
+
+.error {
+  margin: 10px 0 0;
+  color: #B42318;
+  font-size: 13px;
+}

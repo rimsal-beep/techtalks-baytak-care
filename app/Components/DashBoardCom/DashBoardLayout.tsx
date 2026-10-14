@@ -1,6 +1,5 @@
 import React from "react";
 import Link from "next/link";
-import { logout } from "../../actions/logout";
 import style from "../../Style/DashboardStyle.module.css";
 import BrandMark from "../BrandMark";
 import LogoutButton from "../LogoutButton";

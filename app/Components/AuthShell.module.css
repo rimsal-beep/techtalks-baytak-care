@@ -71,6 +71,10 @@
   margin-bottom: 18px;
 }
 
+.passwordField {
+  position: relative;
+}
+
 .label {
   display: block;
   margin-bottom: 7px;
@@ -91,6 +95,43 @@
   font-size: 14.5px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inputWithToggle {
+  padding-right: 42px;
+}
+
+.passwordToggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.passwordToggle:hover {
+  background: #F7F6F3;
+  color: #1F4E79;
+}
+
+.passwordToggle:focus-visible {
+  outline: 2px solid #1F4E79;
+  outline-offset: 2px;
+}
+
+.passwordToggle svg {
+  width: 18px;
+  height: 18px;
+  display: block;
 }
 
 .input::placeholder {

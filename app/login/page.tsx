@@ -9,6 +9,7 @@ import f from "../Components/AuthShell.module.css";
 function LoginContent() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
+  const MIN_PASSWORD_LENGTH=6;
   const nextPath =
     nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
       ? nextParam
@@ -49,6 +50,7 @@ function LoginContent() {
             name="password"
             type="password"
             placeholder="Enter your password"
+            minLength={MIN_PASSWORD_LENGTH}
             required
           />
         </div>

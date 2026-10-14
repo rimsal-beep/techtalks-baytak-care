@@ -1,5 +1,5 @@
 "use client";
-
+import BrandMark from "@/app/Components/BrandMark";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { createMaintenanceRequest } from "../../actions/maintenance";
 import {
@@ -56,9 +56,10 @@ export default function NewRequestForm({
         // Continue with the in-memory key.
       }
     }
-
+    /* eslint-disable react-hooks/set-state-in-effect -- the key is read from sessionStorage in the browser, so it must be set after mount */
     setIdempotencyKey(key);
     setKeyReady(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [storageKey]);
 
   function resetForAnotherRequest() {
@@ -134,20 +135,9 @@ export default function NewRequestForm({
     <main className="min-h-screen bg-[#F7F6F3] text-[#181A1B]">
       <div className="mx-auto max-w-4xl px-6 py-8 sm:px-10">
         <header className="border-b border-[#E4E1D9] pb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1F4E79] text-white">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="h-4.5 w-4.5"
-              >
-                <path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10" />
-              </svg>
-            </div>
-
-            <span className="text-[17px] font-semibold text-[#181A1B]">
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <BrandMark size={28} />
+            <span style={{ fontSize: 17, fontWeight: 600, color: "#14213D" }}>
               Baytak Care
             </span>
           </div>

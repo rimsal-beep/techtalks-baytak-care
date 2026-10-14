@@ -218,3 +218,69 @@
     grid-template-columns: 1fr;
   }
 }
+/* ---------- invitation page ---------- */
+.details {
+  margin: 0 0 24px;
+  padding: 4px 18px;
+  border: 1px solid #E4E1D9;
+  border-radius: 14px;
+  background: #F7F6F3;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #E4E1D9;
+  font-size: 14px;
+}
+
+.detailRow:last-child {
+  border-bottom: 0;
+}
+
+.detailLabel {
+  color: #8B8D89;
+}
+
+.detailValue {
+  color: #181A1B;
+  font-weight: 600;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.step {
+  margin: 0 0 4px;
+  color: #1F4E79;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stepText {
+  margin: 0 0 12px;
+  color: #5B5D5A;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.divider {
+  height: 1px;
+  margin: 22px 0;
+  background: #E4E1D9;
+}
+
+.actionsRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btnPrimary:disabled,
+.secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

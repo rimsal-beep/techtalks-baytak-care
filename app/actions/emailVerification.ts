@@ -7,6 +7,7 @@ import {
   sendVerificationEmail,
 } from "@/lib/emailVerification";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { cookies } from "next/headers";
 
 type ActionResult =
   | { success: true; message: string }
@@ -26,6 +27,12 @@ export async function verifyEmail(
       error: result.error,
     };
   }
+
+  // Never leave an old login in the browser after a verification link.
+  // The person must log in as the account they just verified.
+  const cookieStore = await cookies();
+  cookieStore.delete("userId");
+  cookieStore.delete("propertyId");
 
   return {
     success: true,

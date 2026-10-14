@@ -35,7 +35,9 @@ function VerifyEmailContent() {
         if (cancelled) return;
 
         if (result.success) {
-          window.location.href = nextPath ?? "/profile";
+                  window.location.href = nextPath
+            ? `/login?next=${encodeURIComponent(nextPath)}`
+            : "/login";
           return;
         }
 

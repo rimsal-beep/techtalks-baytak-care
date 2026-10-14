@@ -1,3 +1,4 @@
+
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
@@ -10,11 +11,56 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function getAppBaseUrl(): string {
+  const configuredUrl = process.env.APP_URL;
+
+  if (!configuredUrl) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("APP_URL must be configured in production.");
+    }
+
+    return "http://localhost:3000";
+  }
+
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(configuredUrl);
+  } catch {
+    throw new Error("APP_URL must be a valid absolute URL.");
+  }
+
+  if (
+    parsedUrl.protocol !== "https:" &&
+    !(process.env.NODE_ENV !== "production" && parsedUrl.protocol === "http:")
+  ) {
+    throw new Error("APP_URL must use HTTPS in production.");
+  }
+
+  if (parsedUrl.username || parsedUrl.password) {
+    throw new Error("APP_URL must not contain credentials.");
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    ["localhost", "127.0.0.1", "::1"].includes(
+      parsedUrl.hostname.toLowerCase()
+    )
+  ) {
+    throw new Error("APP_URL must not point to localhost in production.");
+  }
+
+  return parsedUrl.origin;
+}
+
 export async function sendVerificationEmail(
   userId: string,
   email: string,
   nextPath: string | null = null
 ): Promise<void> {
+  // Validate the application URL before creating a verification token.
+  const baseUrl = getAppBaseUrl();
+
   // Generate a secure, unpredictable token.
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
@@ -37,20 +83,15 @@ export async function sendVerificationEmail(
     }),
   ]);
 
-  const baseUrl = (
-    process.env.APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "http://localhost:3000"
-  ).replace(/\/+$/, "");
-
   const verificationUrl = new URL("/verify-email", baseUrl);
-verificationUrl.searchParams.set("token", token);
 
-if (nextPath && /^\/invite\/[a-f0-9]{64}$/.test(nextPath)) {
-  verificationUrl.searchParams.set("next", nextPath);
-}
+  verificationUrl.searchParams.set("token", token);
 
-await sendEmail({
+  if (nextPath && /^\/invite\/[a-f0-9]{64}$/.test(nextPath)) {
+    verificationUrl.searchParams.set("next", nextPath);
+  }
+
+  await sendEmail({
     to: email,
     subject: "Verify your Baytak Care email",
     text: [
@@ -85,10 +126,7 @@ export async function verifyEmailToken(
     error: "This verification link is invalid or has expired.",
   };
 
-  if (
-    typeof token !== "string" ||
-    !/^[a-f0-9]{64}$/i.test(token)
-  ) {
+  if (typeof token !== "string" || !/^[a-f0-9]{64}$/i.test(token)) {
     return invalidResult;
   }
 

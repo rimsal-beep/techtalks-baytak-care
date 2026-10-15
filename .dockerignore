@@ -1,0 +1,22 @@
+
+# Dependencies and generated build output
+node_modules
+.next
+.git
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local database backups and temporary files
+backups
+check-bay87.sql
+
+# Local uploads
+private-uploads
+public/uploads
+
+# Logs and OS files
+npm-debug.log*
+.DS_Store

@@ -98,6 +98,13 @@ npx tsx --test tests/property-soft-delete.test.mjs
 
 Run one file at a time, and use `npx tsx`, not plain `node`.
 
+### Test database setup (once)
+
+1. Create an empty database named `baytak_care_test` next to your normal one.
+2. Copy `.env.test.example` to `.env.test` and set `DATABASE_URL` to that database.
+3. Build the tables:
+   `$env:DATABASE_URL="<your test URL>"; npx prisma migrate deploy`
+
 ## Project Structure
 
 ```text

@@ -305,11 +305,76 @@ form.section .sectionTitle {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+/* ===== approve / reject buttons ===== */
+.approveBtn,
+.rejectBtn,
+.rejectSubmit,
+.dialogCancel {
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
 
-.ownerActions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.ownerActions a { text-decoration: none; }
-.cancelButton { padding: 7px 10px; border: 1px solid #b91c1c; border-radius: 7px; background: white; color: #b91c1c; font: inherit; font-size: 13px; cursor: pointer; }
-.ownerActions button:disabled { opacity: .6; cursor: not-allowed; }
-.editFields { border: 0; margin: 0 0 18px; padding: 0; min-width: 0; }
-.formField select { width: 100%; min-height: 48px; padding: 0 15px; border: 1px solid #D7D9DA; border-radius: 7px; background: white; color: #172033; font: inherit; }
-.formField select:focus-visible, .ownerActions a:focus-visible, .ownerActions button:focus-visible { outline: 2px solid #1F4E79; outline-offset: 2px; }
+/* Approve: main navy button, same as "Create account" */
+.approveBtn {
+  border: 0;
+  background: #1F4E79;
+  color: #FFFFFF;
+}
+
+.approveBtn:hover:not(:disabled) {
+  background: #163A5C;
+}
+
+/* Reject on the page: soft red outline */
+.rejectBtn {
+  border: 1px solid #E9B8B2;
+  background: #FFFFFF;
+  color: #B42318;
+}
+
+.rejectBtn:hover:not(:disabled) {
+  border-color: #B42318;
+  background: #FAEAE9;
+}
+
+/* Reject inside the dialog (final confirm): solid red */
+.rejectSubmit {
+  border: 0;
+  background: #B42318;
+  color: #FFFFFF;
+}
+
+.rejectSubmit:hover:not(:disabled) {
+  background: #912018;
+}
+
+.dialogCancel {
+  border: 1px solid #E4E1D9;
+  background: #FFFFFF;
+  color: #181A1B;
+}
+
+.dialogCancel:hover:not(:disabled) {
+  border-color: #1F4E79;
+}
+
+.approveBtn:disabled,
+.rejectBtn:disabled,
+.rejectSubmit:disabled,
+.dialogCancel:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}

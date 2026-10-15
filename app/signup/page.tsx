@@ -6,19 +6,60 @@ import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
 
+function PasswordToggleIcon({ visible }: { visible: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {visible ? (
+        <>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" fill="none" />
+          <path d="M3 3l18 18" />
+        </>
+      ) : (
+        <>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+          <circle cx="12" cy="12" r="3" fill="none" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function SignupContent() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"OWNER" | "CARETAKER" | "">("");
   const searchParams = useSearchParams();
+
+  function handleRoleSelect(nextRole: "OWNER" | "CARETAKER") {
+    if (nextRole === "CARETAKER" && !nextPath) {
+      setError("Caretaker registration requires an invitation link.");
+      return;
+    }
+
+    setError("");
+    setRole((currentRole) => (currentRole === nextRole ? "" : nextRole));
+  }
+
   const nextParam = searchParams.get("next");
   const nextPath =
     nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
       ? nextParam
       : null;
+  const MIN_PASSWORD_LENGTH = 6;   
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +77,9 @@ function SignupContent() {
     const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
 
     if (!nameRegex.test(trimmedName)) {
-      setError("Name can only contain letters, spaces, hyphens, and apostrophes.");
+      setError(
+        "Name can only contain letters, spaces, hyphens, and apostrophes.",
+      );
       return;
     }
 
@@ -58,20 +101,23 @@ function SignupContent() {
       password,
       role,
       next: role === "CARETAKER" ? nextPath : null,
-   });
+    });
 
     if (result.success === false) {
       setError(result.error);
       setLoading(false);
       return;
     }
-        window.location.href = "/verify-email/sent";
+
+    router.push("/verify-email/sent");
   }
 
   return (
     <AuthShell wide>
       <h1 className={f.title}>Create your account</h1>
-      <p className={f.sub}>Join Baytak Care and start managing your property with confidence.</p>
+      <p className={f.sub}>
+        Join Baytak Care and start managing your property with confidence.
+      </p>
 
       <form onSubmit={handleSubmit}>
         <div className={f.field}>
@@ -80,7 +126,7 @@ function SignupContent() {
           <div className={f.roles}>
             <button
               type="button"
-              onClick={() => setRole("OWNER")}
+              onClick={() => handleRoleSelect("OWNER")}
               aria-pressed={role === "OWNER"}
               className={role === "OWNER" ? `${f.role} ${f.roleOn}` : f.role}
               suppressHydrationWarning
@@ -91,9 +137,11 @@ function SignupContent() {
 
             <button
               type="button"
-              onClick={() => setRole("CARETAKER")}
+              onClick={() => handleRoleSelect("CARETAKER")}
               aria-pressed={role === "CARETAKER"}
-              className={role === "CARETAKER" ? `${f.role} ${f.roleOn}` : f.role}
+              className={
+                role === "CARETAKER" ? `${f.role} ${f.roleOn}` : f.role
+              }
               suppressHydrationWarning
             >
               <b>Caretaker</b>
@@ -128,6 +176,7 @@ function SignupContent() {
               id="email"
               type="email"
               value={email}
+
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
               required
@@ -139,34 +188,56 @@ function SignupContent() {
             <label className={f.label} htmlFor="password">
               Password
             </label>
-            <input
-              className={f.input}
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-              minLength={6}
-              required
-              suppressHydrationWarning
-            />
+            <div className={f.passwordField}>
+              <input
+                className={`${f.input} ${f.inputWithToggle}`}
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
+                minLength={MIN_PASSWORD_LENGTH}
+                required
+                suppressHydrationWarning
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className={f.passwordToggle}
+              >
+                <PasswordToggleIcon visible={showPassword} />
+              </button>
+            </div>
           </div>
 
           <div className={f.field}>
             <label className={f.label} htmlFor="confirmPassword">
               Confirm password
             </label>
-            <input
-              className={f.input}
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter your password"
-              minLength={6}
-              required
-              suppressHydrationWarning
-            />
+            <div className={f.passwordField}>
+              <input
+                className={`${f.input} ${f.inputWithToggle}`}
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter your password"
+                minLength={MIN_PASSWORD_LENGTH}
+                required
+                suppressHydrationWarning
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                aria-pressed={showConfirmPassword}
+                className={f.passwordToggle}
+              >
+                <PasswordToggleIcon visible={showConfirmPassword} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -176,13 +247,28 @@ function SignupContent() {
           </div>
         )}
 
-        <button type="submit" className={f.submit} disabled={loading} suppressHydrationWarning>
+        <button
+          type="submit"
+          className={f.submit}
+          disabled={loading}
+          suppressHydrationWarning
+        >
           {loading ? "Creating account..." : "Create account"}
         </button>
       </form>
 
-      <p className={f.foot}>
-        Already have an account? <a href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : "/login"}>Log in</a>
+      <p>
+        <span>Already have an account?</span>{" "}
+        <a
+          href={
+            nextPath
+              ? `/login?next=${encodeURIComponent(nextPath)}`
+              : "/login"
+          }
+          className={f.foot}
+        >
+          Log in
+        </a>
       </p>
     </AuthShell>
   );

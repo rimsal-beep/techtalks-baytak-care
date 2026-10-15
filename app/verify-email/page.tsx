@@ -1,8 +1,11 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { verifyEmail } from "../actions/emailVerification";
+import AuthShell from "../Components/AuthShell";
+import f from "../Components/AuthShell.module.css";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -15,14 +18,14 @@ function VerifyEmailContent() {
       ? nextParam
       : null;
 
-  const [message, setMessage] = useState("Verifying your email...");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
     async function verify() {
       if (!token) {
-        setMessage("This verification link is invalid or has expired.");
+        setError("This verification link is invalid or has expired.");
         return;
       }
 
@@ -32,16 +35,16 @@ function VerifyEmailContent() {
         if (cancelled) return;
 
         if (result.success) {
-          window.location.href = nextPath ?? "/profile";
+                  window.location.href = nextPath
+            ? `/login?next=${encodeURIComponent(nextPath)}`
+            : "/login";
           return;
         }
 
-        setMessage(result.error);
+        setError(result.error);
       } catch {
         if (!cancelled) {
-          setMessage(
-            "Unable to verify your email right now. Please try again."
-          );
+          setError("Unable to verify your email right now. Please try again.");
         }
       }
     }
@@ -54,16 +57,45 @@ function VerifyEmailContent() {
   }, [token, nextPath]);
 
   return (
-    <main style={{ maxWidth: 520, margin: "80px auto", padding: 24 }}>
-      <h1>Email verification</h1>
-      <p role="status">{message}</p>
-    </main>
+    <AuthShell>
+      {error ? (
+        <>
+          <h1 className={f.title}>We couldn&apos;t verify your email</h1>
+          <p className={f.sub}>
+            The link may have expired or already been used.
+          </p>
+          <div className={f.error} role="alert">{error}</div>
+          <div className={f.actions}>
+            <Link href="/verify-email/sent" className={f.btnPrimary}>
+              Send a new verification email
+            </Link>
+            <Link href="/login" className={f.secondary}>
+              Back to login
+            </Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={f.spinner} aria-hidden="true" />
+          <h1 className={f.title}>Verifying your email</h1>
+          <p className={f.sub} role="status">
+            One moment, we are confirming your email address.
+          </p>
+        </>
+      )}
+    </AuthShell>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<main>Loading verification page...</main>}>
+    <Suspense
+      fallback={
+        <AuthShell>
+          <p className={f.sub}>Loading...</p>
+        </AuthShell>
+      }
+    >
       <VerifyEmailContent />
     </Suspense>
   );

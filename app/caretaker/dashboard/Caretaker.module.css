@@ -1455,3 +1455,101 @@
     transition-duration: 0.001ms !important;
   }
 }
+/* ===== UI cleanup: calm caretaker sidebar (no glow) ===== */
+.side {
+  background: #14213D; /* flat navy, same as the owner sidebar */
+  border-right: 0;
+  align-self: start;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.side::after {
+  display: none; /* glowing line on the right edge */
+}
+
+.side .brand svg,
+.side .brand:hover svg {
+  filter: none;
+}
+
+/* no light under the mouse, no flash across the item */
+.navLink::before,
+.navLink::after {
+  display: none;
+}
+
+.navLink:hover::after {
+  animation: none;
+}
+
+.navLink svg,
+.navLink:hover svg,
+.navOn svg {
+  filter: none;
+}
+
+.navLink:hover svg {
+  transform: none;
+}
+
+.navLink:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.navOn,
+.navOn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+}
+
+/* simple gold marker on the active page, no glow */
+.navOn::before {
+  display: block;
+  box-shadow: none;
+  background: #B9A57F;
+}
+
+/* lets the sidebar stay pinned to the full height */
+.shell {
+  overflow: visible;
+  overflow-x: clip;
+}
+/* no glow on the menu words and badges */
+.side,
+.side * {
+  text-shadow: none;
+}
+
+.navLink,
+.navLink span,
+.navLink b {
+  text-shadow: none;
+  filter: none;
+  -webkit-font-smoothing: antialiased;
+}
+/* ===== calm sidebar: no glow on words, button, avatar ===== */
+.navLink {
+  color: rgba(255, 255, 255, 0.78); /* plain white, like the owner sidebar */
+}
+
+.navLink:hover,
+.navOn,
+.navOn:hover {
+  color: #FFFFFF;
+}
+
+/* "Report an issue" button in the sidebar */
+.side .sideReport,
+.side .sideReport:hover {
+  box-shadow: none;
+}
+
+/* user card and avatar */
+.side .me {
+  box-shadow: none;
+}
+
+.side .av {
+  box-shadow: none;
+}

@@ -134,8 +134,9 @@ export async function inviteCaretaker(
 
   if (caretaker?.role === "OWNER") {
     return {
-      success: false,
-      error: "That account is not a caretaker.",
+      success: true,
+      linked: false,
+      message: "Invitation email sent successfully.",
     };
   }
 

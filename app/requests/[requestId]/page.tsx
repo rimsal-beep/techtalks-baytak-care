@@ -6,7 +6,6 @@ import { safeUrl } from "@/lib/safeUrl";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import ApprovalActions from "./ApprovalActions";
-import OwnerRequestActions from "./OwnerRequestActions";
 import style from "@/app/Style/DashboardStyle.module.css";
 import detailStyle from "./RequestDetail.module.css";
 
@@ -101,10 +100,7 @@ export default async function RequestDetailPage({
         </div>
 
         {request.status === "PENDING_APPROVAL" && (
-          <>
-            <ApprovalActions requestId={request.id} />
-            <OwnerRequestActions requestId={request.id} />
-          </>
+          <ApprovalActions requestId={request.id} />
         )}
 
         {request.status === "REJECTED" && (

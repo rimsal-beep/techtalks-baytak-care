@@ -27,6 +27,7 @@ type PropertyItem = {
   id: string;
   address: string;
   city: string | null;
+  caretakerName: string | null;
   statusLabel: string;
   tone: StatusTone;
 };
@@ -262,6 +263,9 @@ export function Dashboard({
                         {property.city}
                       </p>
                     )}
+                    <p className={listStyle.loc}>
+                        Caretaker: {property.caretakerName ?? "Not assigned"}
+                     </p>
                   </div>
                 </Link>
               ))}

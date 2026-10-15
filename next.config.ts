@@ -1,11 +1,15 @@
-
-
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   logging: {
     incomingRequests: false,
+  },
+  experimental: {
+    serverActions: {
+      // Safety net: photos are shrunk in the browser first.
+      bodySizeLimit: "10mb",
+    },
   },
 };
 

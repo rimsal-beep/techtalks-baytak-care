@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Photos may be up to 5 MB each and a request can hold several.
-      bodySizeLimit: "12mb",
+      // Safety net: photos are shrunk in the browser first.
+      bodySizeLimit: "10mb",
     },
   },
 };

@@ -1,5 +1,4 @@
 import "server-only";
-import nodemailer from "nodemailer";
 
 type EmailOptions = {
   to: string;
@@ -9,36 +8,33 @@ type EmailOptions = {
 };
 
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM } =
-    process.env;
+  const { RESEND_API_KEY, EMAIL_FROM } = process.env;
 
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASSWORD || !EMAIL_FROM) {
-    throw new Error("SMTP configuration is missing.");
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    throw new Error("Email configuration is missing.");
   }
 
-  const port = Number(SMTP_PORT);
-
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid SMTP port.");
-  }
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASSWORD,
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to: [options.to],
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    }),
+    signal: AbortSignal.timeout(10000),
   });
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
-    html: options.html,
-  });
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    console.error("Resend rejected the email:", response.status, details);
+    throw new Error("The email could not be sent.");
+  }
 }
 
 function escapeHtmlText(value: string): string {

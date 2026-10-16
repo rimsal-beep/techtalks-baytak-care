@@ -44,7 +44,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     });
   } catch (error) {
     console.error("SMTP email error:", error);
-    throw new Error("Unable to send email.");
+    throw error;
   }
 }
 

@@ -1,5 +1,6 @@
+
 import "server-only";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 type EmailOptions = {
   to: string;
@@ -8,37 +9,31 @@ type EmailOptions = {
   html?: string;
 };
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function sendEmail(options: EmailOptions): Promise<void> {
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, EMAIL_FROM } =
-    process.env;
+  const from = process.env.EMAIL_FROM;
 
-  if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASSWORD || !EMAIL_FROM) {
-    throw new Error("SMTP configuration is missing.");
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("Resend API key is missing.");
   }
 
-  const port = Number(SMTP_PORT);
-
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error("Invalid SMTP port.");
+  if (!from) {
+    throw new Error("EMAIL_FROM is missing.");
   }
 
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: {
-      user: SMTP_USER,
-      pass: SMTP_PASSWORD,
-    },
-  });
-
-  await transporter.sendMail({
-    from: EMAIL_FROM,
+  const { error } = await resend.emails.send({
+    from,
     to: options.to,
     subject: options.subject,
     text: options.text,
     html: options.html,
   });
+
+  if (error) {
+    console.error("Resend email error:", error);
+    throw new Error("Unable to send email.");
+  }
 }
 
 function escapeHtmlText(value: string): string {
@@ -60,6 +55,7 @@ export async function sendCaretakerInvitationEmail(
   details: { ownerName?: string | null; location?: string | null } = {},
 ): Promise<void> {
   const url = new URL(invitationUrl);
+
   if (
     !["https:", "http:"].includes(url.protocol) ||
     (url.protocol === "http:" &&

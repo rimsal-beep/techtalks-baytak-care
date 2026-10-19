@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { head, put } from "@vercel/blob";
 import path from "node:path";
 
 /**
@@ -44,8 +45,39 @@ export async function saveUpload(
     return { ok: false, error: opts.allowPdf ? "Use a photo or a PDF." : "Use a JPG, PNG, WebP or GIF photo." };
   }
 
+    const name = `${randomUUID()}.${ext}`;
+
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    // Vercel has no writable disk, so the file goes to Vercel Blob.
+    try {
+      await put(`uploads/${name}`, bytes, {
+        access: "public",
+        addRandomSuffix: false,
+        contentType: CONTENT_TYPES[ext],
+      });
+    } catch {
+      return { ok: false, error: "The file could not be saved. Please try again." };
+    }
+    return { ok: true, url: `/uploads/${name}` };
+  }
+
   await mkdir(UPLOAD_DIR, { recursive: true });
-  const name = `${randomUUID()}.${ext}`;
   await writeFile(path.join(UPLOAD_DIR, name), bytes);
   return { ok: true, url: `/uploads/${name}` };
 }
+
+/** Reads a saved file back: Blob on Vercel, the local folder on a laptop. Returns null if missing. */
+export async function readUpload(name: string): Promise<Buffer | null> {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const info = await head(`uploads/${name}`);
+      const res = await fetch(info.url, { cache: "no-store" });
+      if (!res.ok) return null;
+      return Buffer.from(await res.arrayBuffer());
+    } catch {
+      return null;
+    }
+  }
+  return readFile(path.join(UPLOAD_DIR, name)).catch(() => null);
+}
+

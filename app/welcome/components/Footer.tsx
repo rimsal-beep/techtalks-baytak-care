@@ -12,10 +12,10 @@ export default function Footer() {
           <p>Your home, cared for from anywhere.</p>
         </div>
         <div>
-          <h5 className="mono">Product</h5>
+          <h5 className="mono">Home</h5>
           <ul>
             <li>
-              <a href="#product">Product</a>
+              <a href="#product">Home</a>
             </li>
             <li>
               <a href="#features">Features</a>

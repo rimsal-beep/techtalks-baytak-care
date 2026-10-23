@@ -29,14 +29,7 @@ export default function Solution() {
             </picture>
           </div>
         </div>
-        <div className="callout c1" data-depth="-90">
-          <span className="mono">Needs your attention</span>
-          <b>2 approvals waiting</b>
-        </div>
-        <div className="callout c2" data-depth="-140">
-          <span className="mono">Monthly checks</span>
-          <b>2 of 3 homes complete</b>
-        </div>
+       
         <div className="callout c3" data-depth="-60">
           <span className="mono">Live activity</span>
           <b>6 new photos uploaded</b>

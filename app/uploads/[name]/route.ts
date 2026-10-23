@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+
 import { prisma } from "@/lib/prisma";
 import { requireVerifiedUser } from "@/lib/session";
 import { requestScope } from "@/lib/authz";
-import { CONTENT_TYPES, UPLOAD_DIR, UPLOAD_NAME } from "@/lib/uploads";
+import { CONTENT_TYPES, UPLOAD_NAME, readUpload } from "@/lib/uploads";
 
 /**
  * Serves /uploads/<uuid>.<ext> ONLY to a logged-in user who may see the request the file belongs to.
@@ -39,7 +38,7 @@ const user = auth.user;
   });
   if (!allowed) return missing();
 
-  const file = await readFile(path.join(UPLOAD_DIR, name)).catch(() => null);
+   const file = await readUpload(name); 
   if (!file) return missing();
 
   return new Response(new Uint8Array(file), {

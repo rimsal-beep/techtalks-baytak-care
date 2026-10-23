@@ -1,5 +1,5 @@
 "use client";
-
+import { shrinkImage } from "@/lib/shrinkImage";
 import { useState, type DragEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import styles from "../../Caretaker.module.css";
@@ -124,7 +124,7 @@ export default function JobForm({
       const push = async (it: Item, kind: "photo" | "receipt") => {
         if (!it.file) return it.url;
         const fd = new FormData();
-        fd.append("file", it.file);
+        fd.append("file", await shrinkImage(it.file));
         fd.append("kind", kind);
         const r = await uploadJobFile(fd);
         if (!r.success) throw new Error(r.error);

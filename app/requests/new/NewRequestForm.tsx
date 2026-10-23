@@ -2,6 +2,7 @@
 import BrandMark from "@/app/Components/BrandMark";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { createMaintenanceRequest } from "../../actions/maintenance";
+import { shrinkImage } from "@/lib/shrinkImage";
 import {
   CurrencySelect,
   EstimateNoteInput,
@@ -93,6 +94,15 @@ export default function NewRequestForm({
     setSuccessMessage("");
 
     try {
+            const rawPhotos = formData
+        .getAll("issuePhotoUrls")
+        .filter((value): value is File => value instanceof File);
+      const issuePhotos = await Promise.all(rawPhotos.map(shrinkImage));
+
+      if (issuePhotos.some((photo) => photo.size > 5 * 1024 * 1024)) {
+        setError("Each photo must be smaller than 5 MB.");
+        return;
+      }
       const response = await createMaintenanceRequest({
         title: formData.get("title") as string,
         requestType: formData.get("requestType") as string,
@@ -102,9 +112,7 @@ export default function NewRequestForm({
           : undefined,
         currency: formData.get("currency") as "USD" | "LBP",
         estimateNote: formData.get("estimateNote") as string,
-        issuePhotos: formData
-          .getAll("issuePhotoUrls")
-          .filter((value): value is File => value instanceof File),
+               issuePhotos,
         propertyId: property.id,
         idempotencyKey,
       });

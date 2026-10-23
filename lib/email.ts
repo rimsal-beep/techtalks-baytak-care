@@ -29,10 +29,35 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     }),
     signal: AbortSignal.timeout(10000),
   });
+  
+  export async function sendEmail(options: EmailOptions): Promise<void> {
+  const { RESEND_API_KEY, EMAIL_FROM } = process.env;
+
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    throw new Error("Email configuration is missing.");
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to: [options.to],
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
+
     console.error("Resend rejected the email:", response.status, details);
+
     throw new Error("The email could not be sent.");
   }
 }

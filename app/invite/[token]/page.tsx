@@ -191,7 +191,7 @@ export default function InvitationPage({
 
               <p className={f.step}>Step 2</p>
               <p className={f.stepText}>
-                Once you&apos;re logged in with a verified email, accept or
+                Once you&apos;re logged in with your caretaker account, accept or
                 decline the invitation.
               </p>
               {statusBox}

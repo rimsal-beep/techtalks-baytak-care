@@ -103,6 +103,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
             expiresAt: Date;
             deletedAt: Date | null;
             caretakerId: string | null;
+            expectedCaretakerId: string | null;
           }[]
         >`
       SELECT
@@ -110,7 +111,8 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
         i."status"::text AS "status",
         i."expiresAt",
         p."deletedAt",
-        p."caretakerId"
+        p."caretakerId",
+        i."expectedCaretakerId"
       FROM "Invitation" i
       JOIN "Property" p ON p."id" = i."propertyId"
       WHERE i."tokenHash" = ${tokenHash}
@@ -125,7 +127,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
           invitation.expiresAt <= new Date() ||
           invitation.email.trim().toLowerCase() !== email ||
           invitation.deletedAt !== null ||
-          invitation.caretakerId !== null
+          invitation.caretakerId !== invitation.expectedCaretakerId
         ) {
           throw new Error("INVALID_CARETAKER_INVITATION");
         }

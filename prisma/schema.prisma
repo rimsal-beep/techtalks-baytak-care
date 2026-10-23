@@ -76,6 +76,7 @@ model Invitation {
   emailSentAt   DateTime?
 
   propertyId String
+  expectedCaretakerId String?
   property   Property @relation(fields: [propertyId], references: [id])
 
   invitedById String

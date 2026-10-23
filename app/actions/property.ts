@@ -120,25 +120,21 @@ export async function inviteCaretaker(
     };
   }
 
-  if (property.caretakerId) {
-    return {
-      success: false,
-      error: "This property already has a caretaker.",
-    };
-  }
+  // A property may have a current caretaker while a replacement
+  // invitation is pending. The assignment changes only on acceptance.
 
   const caretaker = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, role: true },
-  });
+  where: { email },
+  select: { id: true, role: true },
+});
 
-  if (caretaker?.role === "OWNER") {
-    return {
-      success: true,
-      linked: false,
-      message: "Invitation email sent successfully.",
-    };
-  }
+if (caretaker && caretaker.role !== "CARETAKER") {
+  return {
+    success: false,
+    error:
+      "This user is registered as an owner and cannot be invited as a caretaker.",
+  };
+}
 
   const pending = await prisma.invitation.findFirst({
     where: {
@@ -151,7 +147,7 @@ export async function inviteCaretaker(
     select: { id: true },
   });
   if (pending) {
-    return { success: true, linked: false, message: "A valid invitation already exists for this email." };
+    return { success: false, error: "An invitation is already pending. Use Resend Invitation." };
   }
 
   const appUrl = process.env.APP_URL;
@@ -197,10 +193,24 @@ export async function inviteCaretaker(
     const result = await prisma.$transaction(async (tx) => {
       await lockActiveProperty(tx, property.id, owner);
       const current = await tx.property.findFirst({
-        where: { id: property.id, caretakerId: null, deletedAt: null },
-        select: { id: true },
-      });
-      if (!current) throw new Error("PROPERTY_UNAVAILABLE");
+  where: {
+    id: property.id,
+       ownerId: owner.id,
+    deletedAt: null,
+  },
+      select: {
+    id: true,
+    caretakerId: true,
+  },
+  });
+
+  if (!current) {
+  throw new Error("PROPERTY_UNAVAILABLE");
+   }
+
+   if (caretaker && current.caretakerId === caretaker.id) {
+     throw new Error("ALREADY_ASSIGNED");
+  }
       await tx.invitation.updateMany({
         where: {
           propertyId: property.id,
@@ -226,21 +236,25 @@ export async function inviteCaretaker(
       }
 
       return tx.invitation.create({
-        data: {
-          email,
-          tokenHash,
-          status: "PENDING",
-          expiresAt: new Date(Date.now() + INVITATION_DURATION_MS),
-          propertyId: property.id,
-          invitedById: owner.id,
-          emailAttempts: 1,
-          lastEmailAt: new Date(),
-        },
-        select: { id: true },
-      });
+  data: {
+    email,
+    tokenHash,
+    status: "PENDING",
+    expiresAt: new Date(Date.now() + INVITATION_DURATION_MS),
+    propertyId: property.id,
+
+    // Remember who was assigned when this invitation was created.
+    expectedCaretakerId: current.caretakerId,
+
+    invitedById: owner.id,
+    emailAttempts: 1,
+    lastEmailAt: new Date(),
+  },
+  select: { id: true },
+    });
     });
     if ("existing" in result) {
-      return { success: true, linked: false, message: "A valid invitation already exists for this email." };
+      return { success: false, error: "An invitation is already pending. Use Resend Invitation." };
     }
     invitation = result;
   } catch (error) {
@@ -261,9 +275,8 @@ export async function inviteCaretaker(
 
       if (existing) {
         return {
-          success: true,
-          linked: false,
-          message: "A valid invitation already exists for this email.",
+          success: false,
+          error: "An invitation is already pending. Use Resend Invitation.",
         };
       }
 
@@ -286,9 +299,16 @@ export async function inviteCaretaker(
   } catch (error) {
     console.error("Failed to send caretaker invitation email:", error);
 
+    await prisma.invitation.updateMany({
+      where: { id: invitation.id, tokenHash, status: "PENDING" },
+      data: { status: "REVOKED", revokedAt: new Date() },
+    }).catch((revokeError) => {
+      console.error("Failed to revoke unsent invitation:", revokeError);
+    });
+
     return {
       success: false,
-      error: "Email delivery failed. Invitation saved for retry.",
+      error: "Email submission failed. Please send a new invitation.",
     };
   }
 

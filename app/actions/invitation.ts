@@ -1,6 +1,8 @@
+
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { sendCaretakerInvitationEmail } from "@/lib/email";
 import { getCurrentUser, requireVerifiedUser } from "@/lib/session";
@@ -10,8 +12,49 @@ type ActionResult =
   | { success: true; message: string; propertyId?: string }
   | { success: false; error: string };
 
-export async function acceptInvitation(token: string): Promise<ActionResult> {
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+const INVITATION_TOKEN_REGEX = /^[a-f0-9]{64}$/;
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function getInvitationUrl(token: string): string | null {
+  const appUrl = process.env.APP_URL;
+
+  if (!appUrl) return null;
+
+  try {
+    const baseUrl = new URL(appUrl);
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(
+      baseUrl.hostname,
+    );
+
+    if (
+      (baseUrl.protocol !== "https:" &&
+        !(baseUrl.protocol === "http:" && isLocalhost)) ||
+      baseUrl.username ||
+      baseUrl.password
+    ) {
+      return null;
+    }
+
+    return new URL(`/invite/${token}`, baseUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+function refreshProperty(propertyId: string) {
+  revalidatePath(`/properties/${propertyId}`);
+  revalidatePath(`/properties/${propertyId}/caretaker`);
+  revalidatePath("/caretaker/dashboard");
+  revalidatePath("/properties");
+}
+
+export async function acceptInvitation(
+  token: string,
+): Promise<ActionResult> {
+  if (typeof token !== "string" || !INVITATION_TOKEN_REGEX.test(token)) {
     return { success: false, error: "Invalid invitation link." };
   }
 
@@ -28,23 +71,17 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
     };
   }
 
-  if (!user.emailVerifiedAt) {
-    return {
-      success: false,
-      error: "Please verify your email before accepting an invitation.",
-    };
-  }
-
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashToken(token);
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result: ActionResult = await prisma.$transaction(async (tx) => {
       const invitation = await tx.invitation.findUnique({
         where: { tokenHash },
         select: {
           id: true,
           email: true,
           propertyId: true,
+          expectedCaretakerId: true,
           status: true,
           expiresAt: true,
         },
@@ -61,18 +98,29 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
         };
       }
 
-      if (invitation.email.toLowerCase() !== user.email.trim().toLowerCase()) {
+      if (
+        invitation.email.trim().toLowerCase() !==
+        user.email.trim().toLowerCase()
+      ) {
         return {
           success: false,
           error: "This invitation belongs to another email address.",
         };
       }
- await tx.$queryRaw`
-        SELECT "id" FROM "User" WHERE "id" = ${user.id} FOR UPDATE
+
+      // Serialize assignments for the accepting caretaker.
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "User"
+        WHERE "id" = ${user.id}
+        FOR UPDATE
       `;
 
       const alreadyAssigned = await tx.property.findFirst({
-        where: { caretakerId: user.id, deletedAt: null },
+        where: {
+          caretakerId: user.id,
+          deletedAt: null,
+        },
         select: { id: true },
       });
 
@@ -83,40 +131,60 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
             "You already look after a property. A caretaker can only be assigned to one property at a time.",
         };
       }
-      const property = await tx.$queryRaw<{ id: string }[]>`
-        SELECT "id"
+
+      // Lock the property even if another caretaker is assigned.
+      const properties = await tx.$queryRaw<
+        { id: string; caretakerId: string | null }[]
+      >`
+        SELECT "id", "caretakerId"
         FROM "Property"
         WHERE "id" = ${invitation.propertyId}
           AND "deletedAt" IS NULL
-          AND "caretakerId" IS NULL
         FOR UPDATE
       `;
 
-      if (property.length !== 1) {
-        throw new Error("PROPERTY_UNAVAILABLE");
+      if (properties.length !== 1) {
+        return {
+          success: false,
+          error: "This property is no longer available.",
+        };
       }
+
+      const property = properties[0];
+
+      // Reject invitations created before a change of caretaker.
+      // Legacy null snapshots can only be used on unassigned properties.
+      if (property.caretakerId !== invitation.expectedCaretakerId) {
+        return {
+          success: false,
+          error:
+            "The property's caretaker has changed since this invitation was sent. Please request a new invitation.",
+        };
+      }
+
+      const now = new Date();
 
       const accepted = await tx.invitation.updateMany({
         where: {
           id: invitation.id,
           tokenHash,
           status: "PENDING",
-          expiresAt: { gt: new Date() },
+          expiresAt: { gt: now },
         },
         data: {
           status: "ACCEPTED",
-          acceptedAt: new Date(),
+          acceptedAt: now,
         },
       });
 
       if (accepted.count !== 1) {
-        throw new Error("Invitation already used or expired.");
+        throw new Error("INVITATION_UNAVAILABLE");
       }
 
       const assignment = await tx.property.updateMany({
         where: {
           id: invitation.propertyId,
-          caretakerId: null,
+          caretakerId: invitation.expectedCaretakerId,
           deletedAt: null,
         },
         data: {
@@ -125,8 +193,21 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
       });
 
       if (assignment.count !== 1) {
-        throw new Error("Property already has a caretaker.");
+        throw new Error("ASSIGNMENT_CHANGED");
       }
+
+      // A successful assignment invalidates competing invitations.
+      await tx.invitation.updateMany({
+        where: {
+          propertyId: invitation.propertyId,
+          id: { not: invitation.id },
+          status: "PENDING",
+        },
+        data: {
+          status: "REVOKED",
+          revokedAt: now,
+        },
+      });
 
       return {
         success: true,
@@ -134,17 +215,26 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
         propertyId: invitation.propertyId,
       };
     });
-  } catch {
+
+    if (result.success && result.propertyId) {
+      refreshProperty(result.propertyId);
+    }
+
+    return result;
+  } catch (error) {
+    console.error("Failed to accept caretaker invitation:", error);
+
     return {
       success: false,
-      error:
-        "Unable to accept invitation. It may already be used, expired, or the property may already have a caretaker.",
+      error: "Unable to accept invitation. Please try again.",
     };
   }
 }
 
-export async function declineInvitation(token: string): Promise<ActionResult> {
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+export async function declineInvitation(
+  token: string,
+): Promise<ActionResult> {
+  if (typeof token !== "string" || !INVITATION_TOKEN_REGEX.test(token)) {
     return { success: false, error: "Invalid invitation link." };
   }
 
@@ -161,48 +251,46 @@ export async function declineInvitation(token: string): Promise<ActionResult> {
     };
   }
 
-  if (!user.emailVerifiedAt) {
-    return {
-      success: false,
-      error: "Please verify your email before declining an invitation.",
-    };
-  }
-
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashToken(token);
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       const invitation = await tx.invitation.findUnique({
         where: { tokenHash },
-        select: { id: true, propertyId: true },
+        select: {
+          id: true,
+          propertyId: true,
+          email: true,
+        },
       });
 
       if (!invitation) {
-        return { count: 0 };
+        return { count: 0, propertyId: null as string | null };
       }
 
-      // Use the same property lock as invitation acceptance.
-      const property = await tx.$queryRaw<{ id: string }[]>`
+      if (
+        invitation.email.trim().toLowerCase() !==
+        user.email.trim().toLowerCase()
+      ) {
+        return { count: 0, propertyId: null as string | null };
+      }
+
+      const properties = await tx.$queryRaw<{ id: string }[]>`
         SELECT "id"
         FROM "Property"
         WHERE "id" = ${invitation.propertyId}
           AND "deletedAt" IS NULL
-          AND "caretakerId" IS NULL
         FOR UPDATE
       `;
 
-      if (property.length !== 1) {
-        return { count: 0 };
+      if (properties.length !== 1) {
+        return { count: 0, propertyId: null as string | null };
       }
 
-      return tx.invitation.updateMany({
+      const updated = await tx.invitation.updateMany({
         where: {
           id: invitation.id,
           tokenHash,
-          email: {
-            equals: user.email.trim(),
-            mode: "insensitive",
-          },
           status: "PENDING",
           expiresAt: { gt: new Date() },
         },
@@ -210,20 +298,29 @@ export async function declineInvitation(token: string): Promise<ActionResult> {
           status: "DECLINED",
         },
       });
+
+      return {
+        count: updated.count,
+        propertyId: invitation.propertyId,
+      };
     });
 
-    if (result.count !== 1) {
+    if (result.count !== 1 || !result.propertyId) {
       return {
         success: false,
         error: "Invitation is invalid, expired, or already handled.",
       };
     }
 
+    refreshProperty(result.propertyId);
+
     return {
       success: true,
       message: "Invitation declined successfully.",
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to decline caretaker invitation:", error);
+
     return {
       success: false,
       error: "Unable to decline invitation.",
@@ -232,17 +329,18 @@ export async function declineInvitation(token: string): Promise<ActionResult> {
 }
 
 export async function getInvitationPreview(token: string) {
-  if (typeof token !== "string" || !/^[a-f0-9]{64}$/.test(token)) {
+  if (typeof token !== "string" || !INVITATION_TOKEN_REGEX.test(token)) {
     return { success: false as const, error: "Invalid invitation link." };
   }
 
-  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const tokenHash = hashToken(token);
 
   const invitation = await prisma.invitation.findUnique({
     where: { tokenHash },
     select: {
       status: true,
       expiresAt: true,
+      expectedCaretakerId: true,
       invitedBy: {
         select: { name: true },
       },
@@ -261,7 +359,7 @@ export async function getInvitationPreview(token: string) {
     invitation.status !== "PENDING" ||
     invitation.expiresAt <= new Date() ||
     invitation.property.deletedAt !== null ||
-    invitation.property.caretakerId !== null
+    invitation.property.caretakerId !== invitation.expectedCaretakerId
   ) {
     return {
       success: false as const,
@@ -294,12 +392,29 @@ export async function revokeInvitation(
 
   try {
     const now = new Date();
-    // Ownership and lifecycle checks belong in the write itself.
-    // A concurrent accept, revoke, or expiry cannot transition this row twice.
+
+    const invitation = await prisma.invitation.findFirst({
+      where: {
+        id: invitationId,
+        property: {
+          ownerId: auth.user.id,
+          deletedAt: null,
+        },
+      },
+      select: { propertyId: true },
+    });
+
+    if (!invitation) {
+      return { success: false, error: "Invitation not found." };
+    }
+
     const revoked = await prisma.invitation.updateMany({
       where: {
         id: invitationId,
-        property: { ownerId: auth.user.id, deletedAt: null },
+        property: {
+          ownerId: auth.user.id,
+          deletedAt: null,
+        },
         status: "PENDING",
         expiresAt: { gt: now },
       },
@@ -312,14 +427,21 @@ export async function revokeInvitation(
     if (revoked.count !== 1) {
       return {
         success: false,
-        error:
-          "Invitation unavailable. It may have already changed or expired.",
+        error: "Invitation unavailable. It may already be handled or expired.",
       };
     }
 
-    return { success: true, message: "Invitation revoked successfully." };
+    refreshProperty(invitation.propertyId);
+
+    return {
+      success: true,
+      message: "Invitation revoked successfully.",
+    };
   } catch {
-    return { success: false, error: "Failed to revoke invitation." };
+    return {
+      success: false,
+      error: "Failed to revoke invitation.",
+    };
   }
 }
 
@@ -340,14 +462,36 @@ export async function removeCaretaker(
   }
 
   try {
-    const result = await prisma.property.updateMany({
-      where: {
-        id: propertyId,
-        ownerId: auth.user.id,
-        deletedAt: null,
-        caretakerId: { not: null },
-      },
-      data: { caretakerId: null },
+    const result = await prisma.$transaction(async (tx) => {
+      await lockActiveProperty(tx, propertyId, auth.user);
+
+      const removed = await tx.property.updateMany({
+        where: {
+          id: propertyId,
+          ownerId: auth.user.id,
+          deletedAt: null,
+          caretakerId: { not: null },
+        },
+        data: { caretakerId: null },
+      });
+
+      if (removed.count !== 1) {
+        return { count: 0 };
+      }
+
+      // Invalidate invitations based on the previous assignment.
+      await tx.invitation.updateMany({
+        where: {
+          propertyId,
+          status: "PENDING",
+        },
+        data: {
+          status: "REVOKED",
+          revokedAt: new Date(),
+        },
+      });
+
+      return { count: 1 };
     });
 
     if (result.count !== 1) {
@@ -356,6 +500,8 @@ export async function removeCaretaker(
         error: "Property not found or no caretaker assigned.",
       };
     }
+
+    refreshProperty(propertyId);
 
     return {
       success: true,
@@ -390,23 +536,23 @@ export async function resendInvitation(
 
   const email = emailInput.trim().toLowerCase();
 
-  if (!propertyId.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (
+    !propertyId.trim() ||
+    email.length > 254 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  ) {
     return { success: false, error: "Invalid property or email." };
   }
 
-  const property = await prisma.property.findFirst({
-    where: {
-      id: propertyId,
-      ownerId: owner.id,
-      deletedAt: null,
-    },
-    select: { caretakerId: true },
+  const caretaker = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, role: true },
   });
 
-  if (!property || property.caretakerId) {
+  if (caretaker && caretaker.role !== "CARETAKER") {
     return {
       success: false,
-      error: "Property unavailable for invitations.",
+      error: "This email belongs to an OWNER account, not a caretaker.",
     };
   }
 
@@ -416,12 +562,19 @@ export async function resendInvitation(
       email,
       status: "PENDING",
       expiresAt: { gt: new Date() },
+      property: {
+        ownerId: owner.id,
+        deletedAt: null,
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
   if (!invitation) {
-    return { success: false, error: "No active invitation found." };
+    return {
+      success: false,
+      error: "No active invitation found.",
+    };
   }
 
   const now = new Date();
@@ -437,49 +590,42 @@ export async function resendInvitation(
     };
   }
 
-  const appUrl = process.env.APP_URL;
-
-  if (!appUrl) {
-    return {
-      success: false,
-      error: "Application URL is not configured.",
-    };
-  }
-
-  let baseUrl: URL;
-
-  try {
-    baseUrl = new URL(appUrl);
-
-    const isLocalhost = ["localhost", "127.0.0.1"].includes(baseUrl.hostname);
-
-    if (
-      (baseUrl.protocol !== "https:" &&
-        !(baseUrl.protocol === "http:" && isLocalhost)) ||
-      baseUrl.username ||
-      baseUrl.password
-    ) {
-      throw new Error("Invalid application URL.");
-    }
-  } catch {
-    return {
-      success: false,
-      error: "Invalid application URL configuration.",
-    };
-  }
-
   const rawToken = randomBytes(32).toString("hex");
-  const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+  const tokenHash = hashToken(rawToken);
+  const invitationUrl = getInvitationUrl(rawToken);
 
-  const invitationUrl = new URL(`/invite/${rawToken}`, baseUrl).toString();
+  if (!invitationUrl) {
+    return {
+      success: false,
+      error: "Application URL is not configured correctly.",
+    };
+  }
 
   try {
     const updated = await prisma.$transaction(async (tx) => {
       await lockActiveProperty(tx, propertyId, owner);
+
+      const property = await tx.property.findFirst({
+        where: {
+          id: propertyId,
+          ownerId: owner.id,
+          deletedAt: null,
+        },
+        select: { caretakerId: true },
+      });
+
+      if (
+        !property ||
+        (caretaker && property.caretakerId === caretaker.id) ||
+        property.caretakerId !== invitation.expectedCaretakerId
+      ) {
+        return { count: 0 };
+      }
+
       return tx.invitation.updateMany({
         where: {
           id: invitation.id,
-          property: { ownerId: owner.id, deletedAt: null, caretakerId: null },
+          propertyId,
           status: "PENDING",
           tokenHash: invitation.tokenHash,
           expiresAt: { gt: now },
@@ -500,19 +646,30 @@ export async function resendInvitation(
         },
       });
     });
+
     if (updated.count !== 1) {
       return {
         success: false,
-        error: "Invitation changed. Please retry.",
+        error:
+          "Invitation or caretaker assignment changed. Please create a new invitation.",
       };
     }
 
     try {
       await sendCaretakerInvitationEmail(email, invitationUrl);
-    } catch {
+    } catch (error) {
+      console.error("Failed to resend invitation email:", error);
+
+      await prisma.invitation.updateMany({
+        where: { id: invitation.id, tokenHash, status: "PENDING" },
+        data: { status: "REVOKED", revokedAt: new Date() },
+      }).catch((revokeError) => {
+        console.error("Failed to revoke unsent invitation:", revokeError);
+      });
+
       return {
         success: false,
-        error: "Email submission failed. You can retry after one minute.",
+        error: "Email submission failed. This invitation was revoked; please send a new invitation.",
       };
     }
 
@@ -521,16 +678,25 @@ export async function resendInvitation(
         id: invitation.id,
         tokenHash,
         status: "PENDING",
-        property: { ownerId: owner.id, deletedAt: null },
+        property: {
+          ownerId: owner.id,
+          deletedAt: null,
+        },
       },
-      data: { emailSentAt: new Date() },
+      data: {
+        emailSentAt: new Date(),
+      },
     });
+
+    refreshProperty(propertyId);
 
     return {
       success: true,
-      message: "New invitation email submitted.",
+      message: "New invitation email accepted by the email server.",
     };
-  } catch {
+  } catch (error) {
+    console.error("Failed to resend caretaker invitation:", error);
+
     return {
       success: false,
       error: "Failed to resend invitation.",

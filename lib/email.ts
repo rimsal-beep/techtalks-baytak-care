@@ -32,13 +32,25 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
     },
   });
 
-  await transporter.sendMail({
-    from: EMAIL_FROM,
-    to: options.to,
-    subject: options.subject,
-    text: options.text,
-    html: options.html,
-  });
+  const info = await transporter.sendMail({
+  from: EMAIL_FROM,
+  to: options.to,
+  subject: options.subject,
+  text: options.text,
+  html: options.html,
+});
+
+const recipient = options.to.trim().toLowerCase();
+
+const accepted = info.accepted.some(
+  (address) => address.trim().toLowerCase() === recipient
+);
+
+if (!accepted) {
+  throw new Error(
+    "SMTP server did not accept the recipient."
+  );
+}
 }
 
 function escapeHtmlText(value: string): string {

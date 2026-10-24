@@ -585,43 +585,37 @@
 
 
 
+
 @media (max-width: 480px) {
   .bcl .hero-visual {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    height: auto !important;
-    min-height: 0 !important;
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: clamp(320px, 95vw, 420px) !important;
+    min-height: 320px !important;
     max-height: none !important;
     overflow: visible !important;
-    gap: 16px !important;
     padding: 12px 0 24px !important;
+    box-sizing: border-box !important;
   }
 
   .bcl .hero-visual .arch {
-    display: none !important;
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 auto !important;
   }
 
   .bcl .hero-visual .float,
   .bcl .hero-visual .f1,
   .bcl .hero-visual .f2,
   .bcl .hero-visual .f3 {
-    position: relative !important;
-    inset: auto !important;
+    display: none !important;
+  }
+
+  .bcl .hero-visual .scene {
     width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    transform: none !important;
-    box-sizing: border-box !important;
-  }
-
-  .bcl .hero-visual .float .t,
-  .bcl .hero-visual .float .sub {
-    white-space: normal !important;
-  }
-
-  .bcl .hero-visual .float-inner {
-    min-width: 0 !important;
+    height: 100% !important;
   }
 }

@@ -2,17 +2,14 @@
 
 import {
   FormEvent,
-  Suspense,
   useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { resendVerificationEmail } from "@/app/actions/emailVerification";
 import AuthShell from "@/app/Components/AuthShell";
-import f from "@/app/Components/AuthShell.module.css";
 import v from "../VerifyEmail.module.css";
 
 // The email is kept in sessionStorage (this tab only), never in the URL.
@@ -20,26 +17,6 @@ const STORAGE_KEY = "baytak:pendingVerification";
 const COOLDOWN_SECONDS = 60;
 
 type Pending = { email: string; at: number; next?: string | null };
-
-// Webmail shortcuts, so people can reach their inbox in one click.
-const INBOXES: Record<string, { name: string; url: string }> = {
-  "gmail.com": { name: "Gmail", url: "https://mail.google.com" },
-  "googlemail.com": { name: "Gmail", url: "https://mail.google.com" },
-  "outlook.com": { name: "Outlook", url: "https://outlook.live.com/mail" },
-  "hotmail.com": { name: "Outlook", url: "https://outlook.live.com/mail" },
-  "live.com": { name: "Outlook", url: "https://outlook.live.com/mail" },
-  "msn.com": { name: "Outlook", url: "https://outlook.live.com/mail" },
-  "yahoo.com": { name: "Yahoo Mail", url: "https://mail.yahoo.com" },
-  "icloud.com": { name: "iCloud Mail", url: "https://www.icloud.com/mail" },
-  "me.com": { name: "iCloud Mail", url: "https://www.icloud.com/mail" },
-  "proton.me": { name: "Proton Mail", url: "https://mail.proton.me" },
-  "protonmail.com": { name: "Proton Mail", url: "https://mail.proton.me" },
-};
-
-function getInbox(email: string) {
-  const domain = email.split("@")[1]?.toLowerCase();
-  return domain ? (INBOXES[domain] ?? null) : null;
-}
 
 // --- tiny external store around sessionStorage -------------------------------
 const listeners = new Set<() => void>();
@@ -90,24 +67,56 @@ function parsePending(raw: string | null): Pending | null {
 }
 // -----------------------------------------------------------------------------
 
-function VerificationSentContent() {
-  const searchParams = useSearchParams();
-  const failedInUrl = searchParams.get("emailFailed") === "1";
+function formatTimer(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = String(seconds % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
 
+function MailIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <path d="M3.5 7.5l8.5 6 8.5-6" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}
+
+export default function VerificationSentPage() {
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const pending = useMemo(() => parsePending(raw), [raw]);
 
   const [typedEmail, setTypedEmail] = useState("");
-  const [failureDismissed, setFailureDismissed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const [message, setMessage] = useState("");
-  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   const knownEmail = pending?.email ?? "";
   const email = knownEmail || typedEmail;
-  const emailFailed = failedInUrl && !failureDismissed;
-  const inbox = knownEmail ? getInbox(knownEmail) : null;
 
   const cooldown =
     pending && pending.at > 0
@@ -130,7 +139,7 @@ function VerificationSentContent() {
 
     if (loading || cooldown > 0) return;
 
-    setMessage("");
+    setErrorMessage("");
     setLoading(true);
 
     try {
@@ -138,24 +147,17 @@ function VerificationSentContent() {
 
       if (result.success) {
         const sentAt = Date.now();
-        setIsError(false);
-        setMessage(
-          "If your account still needs verification, a new link is on its way. It can take a minute to arrive.",
-        );
         setNow(sentAt);
-        setFailureDismissed(true);
         writePending({
           email: email.trim().toLowerCase(),
           at: sentAt,
           next: pending?.next ?? null,
         });
       } else {
-        setIsError(true);
-        setMessage(result.error);
+        setErrorMessage(result.error);
       }
     } catch {
-      setIsError(true);
-      setMessage(
+      setErrorMessage(
         "Unable to process your request right now. Please try again later.",
       );
     } finally {
@@ -165,70 +167,64 @@ function VerificationSentContent() {
 
   return (
     <AuthShell>
-      <div className={f.iconCircle} aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="M3 7l9 6 9-6" />
-        </svg>
+      <div className={v.tile} aria-hidden="true">
+        <MailIcon />
       </div>
 
-      <h1 className={f.title}>Check your email</h1>
-
-      {emailFailed && (
-        <div className={f.error} role="alert">
-          We couldn&apos;t send your verification email. Press the button below
-          to try again.
-        </div>
-      )}
+      <h1 className={v.title}>
+        Check your <span className={v.accent}>email</span>
+      </h1>
 
       {knownEmail ? (
         <>
-          <p className={f.sub}>
-            {emailFailed
-              ? "We tried to send a verification link to"
-              : "We sent a verification link to"}
-          </p>
-          <div className={v.chipRow}>
-            <span className={v.emailChip}>{knownEmail}</span>
+          <p className={v.lead}>We sent a confirmation link to:</p>
+          <div className={v.emailBox}>
+            <MailIcon />
+            <span>{knownEmail}</span>
           </div>
         </>
       ) : (
-        <p className={f.sub}>
-          If you created an account, a verification link should arrive in your
-          inbox. Enter your email below to get a new one.
+        <p className={v.lead}>
+          Enter your email and we&apos;ll send you a new confirmation link.
         </p>
       )}
 
-      {inbox && !emailFailed && (
-        <div className={f.actions}>
-          <a
-            href={inbox.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={f.btnPrimary}
-          >
-            Open {inbox.name}
-          </a>
+      <ol className={v.steps}>
+        <li>
+          <span className={v.stepNum}>1</span>
+          <span>Open the email from Baytak Care.</span>
+        </li>
+        <li>
+          <span className={v.stepNum}>2</span>
+          <span>
+            Tap <strong>Confirm my email</strong>. The link works for 24 hours.
+          </span>
+        </li>
+        <li>
+          <span className={v.stepNum}>3</span>
+          <span>Log in and you&apos;re in.</span>
+        </li>
+      </ol>
+
+      {errorMessage ? (
+        <div className={v.noticeError} role="alert">
+          {errorMessage}
         </div>
-      )}
-
-      <p className={v.hint}>
-        Click the link in the email to finish. It expires in 24 hours. Can&apos;t
-        find it? Check your spam folder.
-      </p>
-
-      <div className={v.divider} />
+      ) : knownEmail && cooldown > 0 ? (
+        <div className={v.noticeOk} role="status">
+          <CheckIcon />
+          <span>Sent. The newest link is the only one that works.</span>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit}>
-        <p className={v.resendLabel}>Didn&apos;t get it?</p>
-
         {!knownEmail && (
-          <div className={f.field}>
-            <label className={f.label} htmlFor="email">
+          <div className={v.field}>
+            <label className={v.label} htmlFor="email">
               Your email
             </label>
             <input
-              className={f.input}
+              className={v.input}
               id="email"
               type="email"
               value={typedEmail}
@@ -241,51 +237,22 @@ function VerificationSentContent() {
           </div>
         )}
 
-        {message && (
-          <div
-            className={isError ? f.error : f.notice}
-            role={isError ? "alert" : "status"}
-            aria-live="polite"
-          >
-            {message}
-          </div>
-        )}
-
         <button
           type="submit"
-          className={knownEmail ? f.secondary : f.submit}
+          className={v.resendBtn}
           disabled={loading || cooldown > 0}
         >
           {loading
             ? "Sending..."
             : cooldown > 0
-              ? `Resend available in ${cooldown}s`
-              : emailFailed
-                ? "Try sending again"
-                : "Resend email"}
+              ? `Resend in ${formatTimer(cooldown)}`
+              : "Resend email"}
         </button>
       </form>
 
-      <p className={f.foot}>
-        <Link href="/signup">Wrong email? Sign up again</Link>
-      </p>
-      <p className={f.foot}>
-        <Link href="/login">Back to login</Link>
+      <p className={v.footer}>
+        Wrong address? <Link href="/signup">Sign up again</Link>
       </p>
     </AuthShell>
-  );
-}
-
-export default function VerificationSentPage() {
-  return (
-    <Suspense
-      fallback={
-        <AuthShell>
-          <p className={f.sub}>Loading...</p>
-        </AuthShell>
-      }
-    >
-      <VerificationSentContent />
-    </Suspense>
   );
 }

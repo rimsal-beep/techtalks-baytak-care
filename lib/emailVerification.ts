@@ -1,14 +1,22 @@
-
 import "server-only";
 
 import { createHash, randomBytes } from "node:crypto";
-import { prisma } from "./prisma";
-import { sendEmail } from "./email";
+import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
 
 const TOKEN_EXPIRY_HOURS = 24;
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function getAppBaseUrl(): string {
@@ -91,30 +99,89 @@ export async function sendVerificationEmail(
     verificationUrl.searchParams.set("next", nextPath);
   }
 
+  // First name for the greeting. A missing name must never block the email.
+  let firstName = "";
+
+  try {
+    const owner = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    firstName = owner?.name?.trim().split(/\s+/)[0] ?? "";
+  } catch {
+    firstName = "";
+  }
+
+  const url = verificationUrl.toString();
+  const safeUrl = escapeHtml(url);
+  const greetingText = firstName ? `Hi ${firstName},` : "Hi,";
+  const greetingHtml = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
+
+  const text = [
+    "Confirm your email",
+    "",
+    `${greetingText} tap the link below to confirm your email and finish creating your Baytak Care account.`,
+    "",
+    `Confirm my email: ${url}`,
+    "",
+    "This link works once and expires in 24 hours. If you didn't create an account, you can ignore this email.",
+  ].join("\n");
+
+  const font = "Arial,Helvetica,sans-serif";
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#F2EEE7;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+      Confirm your email to finish creating your Baytak Care account.
+    </div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F2EEE7;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E4E1D9;border-radius:24px;">
+            <tr>
+              <td style="padding:36px 40px 0;font-family:${font};font-size:13px;font-weight:600;letter-spacing:0.32em;color:#14213D;">
+                BAYTAK CARE
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:36px 40px 0;font-family:${font};">
+                <h1 style="margin:0 0 14px;font-size:34px;line-height:1.15;font-weight:600;letter-spacing:-0.02em;color:#14213D;">
+                  Confirm your email
+                </h1>
+                <p style="margin:0 0 28px;font-size:17px;line-height:1.6;color:#5A6478;">
+                  ${greetingHtml} tap the button below to confirm your email and finish creating your Baytak Care account.
+                </p>
+                <a href="${safeUrl}" style="display:inline-block;padding:16px 32px;border-radius:999px;background:#14213D;color:#FFFFFF;font-size:17px;font-weight:600;text-decoration:none;">
+                  Confirm my email
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 40px 0;">
+                <div style="border-top:1px solid #E4E1D9;font-size:0;line-height:0;">&nbsp;</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 40px 36px;font-family:${font};font-size:14px;line-height:1.7;color:#8B93A3;">
+                This link works once and expires in 24 hours. If you didn&#39;t create an account, you can ignore this email.
+                <br /><br />
+                Button not working? Paste this link into your browser:<br />
+                <a href="${safeUrl}" style="color:#14213D;word-break:break-all;">${safeUrl}</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
   await sendEmail({
     to: email,
-    subject: "Verify your Baytak Care email",
-    text: [
-      "Hello,",
-      "",
-      "Please verify your email address for your Baytak Care account.",
-      "",
-      `Verify your email: ${verificationUrl.toString()}`,
-      "",
-      "This link expires in 24 hours.",
-      "If you did not create this account, you can ignore this email.",
-    ].join("\n"),
-    html: `
-      <p>Hello,</p>
-      <p>Please verify your email address for your Baytak Care account.</p>
-      <p>
-        <a href="${verificationUrl.toString()}">
-          Verify my email
-        </a>
-      </p>
-      <p>This link expires in 24 hours.</p>
-      <p>If you did not create this account, you can ignore this email.</p>
-    `,
+    subject: "Confirm your email for Baytak Care",
+    text,
+    html,
   });
 }
 

@@ -61,8 +61,7 @@ export async function resendVerificationEmail(
     return neutralResult;
   }
 
-  // Per-IP limit (shared across server instances). This answer does not
-  // reveal anything about any account, so it can be explicit.
+  // Per-IP limit (shared across server instances).
   if (!(await allowResendAttempt())) {
     return {
       success: false,

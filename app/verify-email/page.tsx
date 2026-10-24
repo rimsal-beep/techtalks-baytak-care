@@ -5,13 +5,29 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { verifyEmail } from "../actions/emailVerification";
 import AuthShell from "../Components/AuthShell";
-import f from "../Components/AuthShell.module.css";
 import v from "./VerifyEmail.module.css";
 
-// Must match the `fill` animation duration in VerifyEmail.module.css (2.5s).
-const REDIRECT_MS = 2500;
+// After the "Email confirmed" screen, go to login by itself after this long.
+// The "Log in" button always works right away.
+const REDIRECT_MS = 4000;
 
 type Outcome = { ok: true } | { ok: false; error: string } | null;
+
+function ArrowIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -43,9 +59,7 @@ function VerifyEmailContent() {
         if (cancelled) return;
 
         setOutcome(
-          result.success
-            ? { ok: true }
-            : { ok: false, error: result.error },
+          result.success ? { ok: true } : { ok: false, error: result.error },
         );
       } catch {
         if (!cancelled) {
@@ -66,7 +80,6 @@ function VerifyEmailContent() {
 
   const success = outcome?.ok === true;
 
-  // After a success screen, continue to login automatically.
   useEffect(() => {
     if (!success) return;
 
@@ -87,7 +100,7 @@ function VerifyEmailContent() {
     <AuthShell>
       {success ? (
         <>
-          <div className={v.successCircle} aria-hidden="true">
+          <div className={`${v.tile} ${v.tileSuccess}`} aria-hidden="true">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -99,44 +112,57 @@ function VerifyEmailContent() {
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>
           </div>
-          <h1 className={f.title}>Email verified</h1>
-          <p className={f.sub} role="status">
-            Your account is ready. Taking you to log in...
+          <h1 className={v.title}>
+            Email <span className={v.accent}>confirmed</span>
+          </h1>
+          <p className={v.lead} role="status">
+            Thanks. Your account is ready. Log in to get started.
           </p>
-          <div className={v.progress} aria-hidden="true">
-            <span />
-          </div>
-          <div className={f.actions}>
-            <Link href={loginUrl} className={f.btnPrimary}>
-              Continue to log in
-            </Link>
-          </div>
+          <Link href={loginUrl} className={v.primaryBtn}>
+            Log in
+            <ArrowIcon />
+          </Link>
         </>
       ) : errorMessage ? (
         <>
-          <h1 className={f.title}>We couldn&apos;t verify your email</h1>
-          <p className={f.sub}>
-            The link may have expired or already been used. You can request a
-            new one in a few seconds.
+          <div className={`${v.tile} ${v.tileError}`} aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 7v6M12 17h.01" />
+            </svg>
+          </div>
+          <h1 className={v.title}>
+            We couldn&apos;t <span className={v.accent}>verify</span> your email
+          </h1>
+          <p className={v.lead}>
+            The link may have expired or already been used. You can ask for a
+            new one.
           </p>
-          <div className={f.error} role="alert">
+          <div className={v.noticeError} role="alert">
             {errorMessage}
           </div>
-          <div className={f.actions}>
-            <Link href="/verify-email/sent" className={f.btnPrimary}>
-              Send a new verification email
-            </Link>
-            <Link href="/login" className={f.secondary}>
-              Back to login
-            </Link>
-          </div>
+          <Link href="/verify-email/sent" className={v.primaryBtn}>
+            Send a new link
+            <ArrowIcon />
+          </Link>
+          <Link href="/login" className={v.textLink}>
+            Back to login
+          </Link>
         </>
       ) : (
         <>
-          <div className={f.spinner} aria-hidden="true" />
-          <h1 className={f.title}>Verifying your email</h1>
-          <p className={f.sub} role="status">
-            One moment, we are confirming your email address.
+          <div className={v.spinner} aria-hidden="true" />
+          <h1 className={v.title}>
+            Verifying your <span className={v.accent}>email</span>
+          </h1>
+          <p className={v.lead} role="status">
+            One moment, we&apos;re confirming your address.
           </p>
         </>
       )}
@@ -149,7 +175,7 @@ export default function VerifyEmailPage() {
     <Suspense
       fallback={
         <AuthShell>
-          <p className={f.sub}>Loading...</p>
+          <p className={v.lead}>Loading...</p>
         </AuthShell>
       }
     >

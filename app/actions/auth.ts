@@ -34,7 +34,6 @@ type SignupResult =
         email: string;
         role: "OWNER" | "CARETAKER";
       };
-      emailSent: boolean;
     }
   | {
       success: false;
@@ -45,6 +44,24 @@ const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const invitePathRegex = /^\/invite\/[a-f0-9]{64}$/;
 const INVALID_INVITATION = "INVALID_CARETAKER_INVITATION";
+
+// Sending problems are logged on the server (with the real cause) and the user
+// continues to the "Check your email" page, where Resend is always available.
+async function sendVerificationQuietly(
+  userId: string,
+  email: string,
+  nextPath: string | null,
+) {
+  try {
+    await sendVerificationEmail(userId, email, nextPath);
+  } catch (error) {
+    console.error(
+      "Failed to send verification email:",
+      error instanceof Error ? error.message : "unknown error",
+      error instanceof Error ? error.cause : undefined,
+    );
+  }
+}
 
 export async function signup(input: SignupInput): Promise<SignupResult> {
   const trimmedName = typeof input?.name === "string" ? input.name.trim() : "";
@@ -184,6 +201,58 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       "code" in error &&
       (error as { code?: string }).code === "P2002"
     ) {
+      // The email exists. If that account was never verified, don't leave the
+      // person at a dead end: send a fresh link to the SAME account. Its name
+      // and password are not changed, so nobody can take over an account by
+      // signing up with someone else's email.
+      try {
+        const existing = await prisma.user.findUnique({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            emailVerifiedAt: true,
+          },
+        });
+
+        if (existing && !existing.emailVerifiedAt) {
+          const recent = await prisma.emailVerificationToken.findFirst({
+            where: {
+              userId: existing.id,
+              usedAt: null,
+              expiresAt: { gt: new Date() },
+              createdAt: { gt: new Date(Date.now() - 60_000) },
+            },
+            select: { id: true },
+          });
+
+          if (!recent) {
+            await sendVerificationQuietly(
+              existing.id,
+              existing.email,
+              existing.role === "CARETAKER" ? nextPath : null,
+            );
+          }
+
+          return {
+            success: true,
+            data: {
+              id: existing.id,
+              name: existing.name,
+              email: existing.email,
+              role: existing.role,
+            },
+          };
+        }
+      } catch (lookupError) {
+        console.error(
+          "Duplicate-email lookup failed:",
+          lookupError instanceof Error ? lookupError.message : "unknown error",
+        );
+      }
+
       return {
         success: false,
         error: "An account with this email already exists.",
@@ -199,19 +268,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return { success: false, error: "Failed to create account." };
   }
 
-  // The account is valid at this point. If the email fails we keep the account,
-  // tell the client honestly, and let the user use the resend option.
-  let emailSent = true;
-
-  try {
-    await sendVerificationEmail(user.id, user.email, nextPath);
-  } catch (emailError) {
-    emailSent = false;
-    console.error(
-      "Failed to send verification email:",
-      emailError instanceof Error ? emailError.message : "unknown error",
-    );
-  }
+  await sendVerificationQuietly(user.id, user.email, nextPath);
 
   return {
     success: true,
@@ -221,7 +278,6 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       email: user.email,
       role: user.role,
     },
-    emailSent,
   };
 }
 

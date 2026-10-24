@@ -19,8 +19,10 @@ function PasswordToggleIcon({ visible }: { visible: boolean }) {
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
+      fill="none"
+      style={{ fill: "none" }}
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -130,13 +132,13 @@ function SignupContent() {
       }
 
       // Remember the email for the "check your email" page (this tab only,
-      // never in the URL). at = 0 means no link was actually sent.
+      // never in the URL).
       try {
         sessionStorage.setItem(
           "baytak:pendingVerification",
           JSON.stringify({
             email: trimmedEmail.toLowerCase(),
-            at: result.emailSent ? Date.now() : 0,
+            at: Date.now(),
             next: nextPath,
           }),
         );
@@ -145,11 +147,7 @@ function SignupContent() {
       }
 
       // Stay in the loading state while navigating.
-      router.push(
-        result.emailSent
-          ? "/verify-email/sent"
-          : "/verify-email/sent?emailFailed=1",
-      );
+      router.push("/verify-email/sent");
     } catch {
       setError("Something went wrong. Please try again.");
       submitting.current = false;
@@ -170,6 +168,15 @@ function SignupContent() {
           address the invitation was sent to.
         </div>
       )}
+
+      {/* Edge draws its own password eye. Hide it so only ours shows.
+          Inline on purpose: AuthShell.module.css stays untouched. */}
+      <style>{`
+        #password::-ms-reveal,
+        #confirmPassword::-ms-reveal {
+          display: none;
+        }
+      `}</style>
 
       <form onSubmit={handleSubmit} noValidate>
         <div className={f.grid}>

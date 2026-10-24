@@ -1,17 +1,27 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { prisma } from "../../lib/prisma";
 import { hashPassword } from "../../lib/auth";
 import { requireVerifiedUser } from "../../lib/session";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { sendVerificationEmail } from "../../lib/emailVerification";
-import { createHash } from "node:crypto";
+import { validatePassword } from "../../lib/passwordPolicy";
+import {
+  allowSignupAttempt,
+  domainCanReceiveMail,
+  isPlausibleEmail,
+  isPwnedPassword,
+} from "../../lib/signupGuards";
 
+// The browser NEVER chooses a role.
+// - No valid invitation link  -> OWNER
+// - Valid invitation for this exact email -> CARETAKER
+// Anything else is rejected.
 type SignupInput = {
   name: string;
   email: string;
   password: string;
-  role: "OWNER" | "CARETAKER";
   next?: string | null;
 };
 
@@ -32,17 +42,35 @@ type SignupResult =
 
 const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const invitePathRegex = /^\/invite\/[a-f0-9]{64}$/;
+const INVALID_INVITATION = "INVALID_CARETAKER_INVITATION";
+
+// Sending problems are logged on the server (with the real cause) and the user
+// continues to the "Check your email" page, where Resend is always available.
+async function sendVerificationQuietly(
+  userId: string,
+  email: string,
+  nextPath: string | null,
+) {
+  try {
+    await sendVerificationEmail(userId, email, nextPath);
+  } catch (error) {
+    console.error(
+      "Failed to send verification email:",
+      error instanceof Error ? error.message : "unknown error",
+      error instanceof Error ? error.cause : undefined,
+    );
+  }
+}
 
 export async function signup(input: SignupInput): Promise<SignupResult> {
   const trimmedName = typeof input?.name === "string" ? input.name.trim() : "";
   const email =
     typeof input?.email === "string" ? input.email.trim().toLowerCase() : "";
   const password = typeof input?.password === "string" ? input.password : "";
-  const role = input?.role;
 
   const nextPath =
-    typeof input?.next === "string" &&
-    /^\/invite\/[a-f0-9]{64}$/.test(input.next)
+    typeof input?.next === "string" && invitePathRegex.test(input.next)
       ? input.next
       : null;
 
@@ -65,35 +93,53 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     return { success: false, error: "Enter a valid email." };
   }
 
-  if (password.length < 6) {
+  if (!isPlausibleEmail(email)) {
+    return { success: false, error: "Enter a valid email." };
+  }
+
+  const passwordError = validatePassword(password, {
+    name: trimmedName,
+    email,
+  });
+
+  if (passwordError) {
+    return { success: false, error: passwordError };
+  }
+
+  // Rate limit before any expensive work (DNS, network, hashing, database).
+  if (!(await allowSignupAttempt())) {
     return {
       success: false,
-      error: "Password must be at least 6 characters.",
+      error: "Too many attempts. Please try again in a few minutes.",
     };
   }
 
-  if (password.length > 128) {
-    return { success: false, error: "Password is too long." };
-  }
-
-  if (role !== "OWNER" && role !== "CARETAKER") {
-    return { success: false, error: "Please choose a role." };
-  }
-
-  if (role === "CARETAKER" && !nextPath) {
+  if (!(await domainCanReceiveMail(email))) {
     return {
       success: false,
-      error: "A valid invitation link is required to register as a caretaker.",
+      error: "That email domain can't receive mail. Check for typos.",
     };
   }
+
+  if (await isPwnedPassword(password)) {
+    return {
+      success: false,
+      error:
+        "This password appeared in a known data breach. Please choose a different one.",
+    };
+  }
+
+  let user;
 
   try {
     const passwordHash = await hashPassword(password);
 
-    const user = await prisma.$transaction(async (tx) => {
-      if (role === "CARETAKER") {
-        const rawToken = nextPath!.split("/")[2];
-
+    // One User table + unique email: any existing account (owner or caretaker)
+    // blocks a new signup. The database constraint is the real guard against
+    // simultaneous requests.
+    user = await prisma.$transaction(async (tx) => {
+      if (nextPath) {
+        const rawToken = nextPath.split("/")[2];
         const tokenHash = createHash("sha256").update(rawToken).digest("hex");
 
         const invitations = await tx.$queryRaw<
@@ -105,17 +151,17 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
             caretakerId: string | null;
           }[]
         >`
-      SELECT
-        i."email",
-        i."status"::text AS "status",
-        i."expiresAt",
-        p."deletedAt",
-        p."caretakerId"
-      FROM "Invitation" i
-      JOIN "Property" p ON p."id" = i."propertyId"
-      WHERE i."tokenHash" = ${tokenHash}
-      FOR UPDATE OF i, p
-    `;
+          SELECT
+            i."email",
+            i."status"::text AS "status",
+            i."expiresAt",
+            p."deletedAt",
+            p."caretakerId"
+          FROM "Invitation" i
+          JOIN "Property" p ON p."id" = i."propertyId"
+          WHERE i."tokenHash" = ${tokenHash}
+          FOR UPDATE OF i, p
+        `;
 
         const invitation = invitations[0];
 
@@ -127,7 +173,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
           invitation.deletedAt !== null ||
           invitation.caretakerId !== null
         ) {
-          throw new Error("INVALID_CARETAKER_INVITATION");
+          throw new Error(INVALID_INVITATION);
         }
       }
 
@@ -136,43 +182,12 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
           name: trimmedName,
           email,
           passwordHash,
-          role,
+          role: nextPath ? "CARETAKER" : "OWNER",
         },
       });
     });
-
-    try {
-      await sendVerificationEmail(
-        user.id,
-        user.email,
-        role === "CARETAKER" ? nextPath : null,
-      );
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
-
-      return {
-        success: false,
-        error:
-          "Your account was created, but we couldn't send the verification email. Please try the resend option.",
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-    };
   } catch (error) {
-    console.error("Failed to create user:", error);
-
-    if (
-      error instanceof Error &&
-      error.message === "INVALID_CARETAKER_INVITATION"
-    ) {
+    if (error instanceof Error && error.message === INVALID_INVITATION) {
       return {
         success: false,
         error:
@@ -184,16 +199,86 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
       typeof error === "object" &&
       error !== null &&
       "code" in error &&
-      error.code === "P2002"
+      (error as { code?: string }).code === "P2002"
     ) {
+      // The email exists. If that account was never verified, don't leave the
+      // person at a dead end: send a fresh link to the SAME account. Its name
+      // and password are not changed, so nobody can take over an account by
+      // signing up with someone else's email.
+      try {
+        const existing = await prisma.user.findUnique({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            emailVerifiedAt: true,
+          },
+        });
+
+        if (existing && !existing.emailVerifiedAt) {
+          const recent = await prisma.emailVerificationToken.findFirst({
+            where: {
+              userId: existing.id,
+              usedAt: null,
+              expiresAt: { gt: new Date() },
+              createdAt: { gt: new Date(Date.now() - 60_000) },
+            },
+            select: { id: true },
+          });
+
+          if (!recent) {
+            await sendVerificationQuietly(
+              existing.id,
+              existing.email,
+              existing.role === "CARETAKER" ? nextPath : null,
+            );
+          }
+
+          return {
+            success: true,
+            data: {
+              id: existing.id,
+              name: existing.name,
+              email: existing.email,
+              role: existing.role,
+            },
+          };
+        }
+      } catch (lookupError) {
+        console.error(
+          "Duplicate-email lookup failed:",
+          lookupError instanceof Error ? lookupError.message : "unknown error",
+        );
+      }
+
       return {
         success: false,
         error: "An account with this email already exists.",
       };
     }
 
+    // Log only the error code/name, never the input or the full error object.
+    console.error("Failed to create user:", {
+      code: (error as { code?: string })?.code,
+      name: error instanceof Error ? error.name : "unknown",
+    });
+
     return { success: false, error: "Failed to create account." };
   }
+
+  await sendVerificationQuietly(user.id, user.email, nextPath);
+
+  return {
+    success: true,
+    data: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  };
 }
 
 type UpdateProfileResult =

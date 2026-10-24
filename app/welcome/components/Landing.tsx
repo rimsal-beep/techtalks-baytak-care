@@ -3,7 +3,6 @@ import Cursor from "./Cursor";
 import Toast from "./Toast";
 import Nav from "./Nav";
 import Hero from "./Hero";
-import Problem from "./Problem";
 import Solution from "./Solution";
 import Features from "./Features";
 import Trust from "./Trust";
@@ -23,7 +22,7 @@ export default function Landing({ fontClassName = "" }: { fontClassName?: string
       <Nav />
       <main id="top">
         <Hero />
-        <Problem />
+      
         <Solution />
         <Features />
         <Trust />

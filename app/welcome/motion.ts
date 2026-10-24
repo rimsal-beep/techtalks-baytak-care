@@ -462,24 +462,22 @@ export function initLandingMotion(root: HTMLElement): () => void {
     // hero
     hx = lerp(hx, thx, 0.06);
     hy = lerp(hy, thy, 0.06);
-    if (sy < vh * 1.4) {
-      heroLayers.forEach((g) => {
-        const d = Number(g.dataset.depth ?? 0);
-        g.style.transform = `translate(${-hx * d * 16}px, ${-hy * d * 8 + sy * d * 0.05}px)`;
-      });
-      floats.forEach((f) => {
-        const d = Number(f.dataset.depth ?? 0);
-        f.style.translate = `${hx * d * 7}px ${hy * d * 6 - sy * d * 0.06}px`;
-      });
-      if (heroScene) heroScene.style.translate = `0 ${sy * 0.08}px`;
-    }
+  if (sy < vh * 1.4) {
+  heroLayers.forEach((g, i) => {
+    const depth = (i % 5 + 1) * 2;
+    g.style.transform = `translate3d(${hx * depth}px, ${hy * depth}px, 0)`;
+  });
+
+  if (heroScene) {
+    heroScene.style.translate = "";
+  }
+}
     // problem section (pinned while you scroll through it)
-    if (problem) {
-      const pr = problem.getBoundingClientRect();
-      const pt = clamp(-pr.top / (pr.height - vh));
-      chatP = reduce ? pt : lerp(chatP, pt, 0.12);
-      if (pr.top < vh && pr.bottom > 0) renderChat(chatP);
-    }
+    // Keep the chat preview static while scrolling.
+if (problem) {
+  // Keep the WhatsApp preview static.
+  renderChat(0.55);
+}
     // dashboard frame tilts flat as it scrolls into view
     if (stage && solFrame) {
       const st = secProgress(stage, 1.05, 0.25);

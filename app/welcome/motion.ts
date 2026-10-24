@@ -462,16 +462,16 @@ export function initLandingMotion(root: HTMLElement): () => void {
     // hero
     hx = lerp(hx, thx, 0.06);
     hy = lerp(hy, thy, 0.06);
-    if (sy < vh * 1.4) {
-    // Keep the hero illustration and floating cards stationary.
-heroLayers.forEach((g) => {
-  g.style.transform = "";
-});
-floats.forEach((f) => {
-  f.style.translate = "";
-});
-      if (heroScene) heroScene.style.translate = "";
-    }
+  if (sy < vh * 1.4) {
+  heroLayers.forEach((g, i) => {
+    const depth = (i % 5 + 1) * 2;
+    g.style.transform = `translate3d(${hx * depth}px, ${hy * depth}px, 0)`;
+  });
+
+  if (heroScene) {
+    heroScene.style.translate = "";
+  }
+}
     // problem section (pinned while you scroll through it)
     // Keep the chat preview static while scrolling.
 if (problem) {

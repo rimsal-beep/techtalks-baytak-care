@@ -31,7 +31,7 @@ export default function Hero() {
           <div className="arch">
             <div className="scene" id="heroScene" dangerouslySetInnerHTML={{ __html: SCENES["mountain:gold"] }} />
           </div>
-          <div className="float f1" style={{ "--i": "0" } as CSSProperties} data-depth="1.6">
+         <div className="float f1" style={{ display: "none", "--i": "0" } as CSSProperties} data-depth="1.6">
             <div className="float-inner" style={{ "--i": "0" } as CSSProperties}>
               <span className="ico" style={{ background: "var(--good-bg)", color: "var(--good)" }}>
                 <Icon name="check" />
@@ -42,7 +42,7 @@ export default function Hero() {
               </div>
             </div>
           </div>
-          <div className="float f2" style={{ "--i": "1" } as CSSProperties} data-depth="2.2">
+          <div className="float f2" style={{ display: "none", "--i": "1" } as CSSProperties} data-depth="2.2">
             <div className="float-inner" style={{ "--i": "1" } as CSSProperties}>
               <span className="ico" style={{ background: "var(--warn-bg)", color: "var(--warn)" }}>
                 <Icon name="wrench" />
@@ -57,7 +57,7 @@ export default function Hero() {
               </div>
             </div>
           </div>
-          <div className="float f3" style={{ "--i": "2" } as CSSProperties} data-depth="1.2">
+          <div className="float f3" style={{ display: "none", "--i": "2" } as CSSProperties} data-depth="1.2">
             <div className="float-inner" style={{ "--i": "2" } as CSSProperties}>
               <span className="ico" style={{ background: "var(--info-bg)", color: "var(--info)" }}>
                 <Icon name="camera" />

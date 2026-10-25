@@ -619,3 +619,50 @@
     height: 100% !important;
   }
 }
+/* ===== Phone-only fixes (720px and below): hero house + navigation ===== */
+@media (max-width: 720px) {
+  /* hero: a column that can never be wider than the screen */
+  .bcl .hero .grid { grid-template-columns: minmax(0, 1fr); }
+  .bcl .hero-visual {
+    width: 100%; max-width: none; height: auto; max-height: none;
+    aspect-ratio: 4 / 5; overflow: hidden;
+  }
+  .bcl .arch { inset: 0; }
+  .bcl .arch .scene { inset: 0; }
+  .bcl .arch .scene svg { width: 100%; height: 100%; }
+  .bcl .hero .float { display: none !important; }
+
+  /* navigation: logo + menu only ("Get started" stays inside the menu) */
+  .bcl .nav .right .btn { display: none; }
+  .bcl .nav .bar,
+  .bcl .nav.scrolled .bar {
+    width: calc(100% - 2 * var(--gutter)); max-width: none; min-width: 0;
+    height: 58px; padding: 0 6px 0 16px; gap: 8px;
+    background: rgba(255, 253, 248, .94);
+    backdrop-filter: blur(14px) saturate(1.3);
+    -webkit-backdrop-filter: blur(14px) saturate(1.3);
+    box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgba(20, 33, 61, .35);
+  }
+  .bcl .nav.dark .bar,
+  .bcl .nav.dark.scrolled .bar {
+    background: rgba(13, 23, 48, .9); color: var(--beige);
+    box-shadow: 0 0 0 1px rgba(244, 239, 230, .12);
+  }
+  .bcl .nav .brand { min-width: 0; font-size: 12px; letter-spacing: .22em; }
+
+  /* hamburger: no background, lines match the bar, clean X when open */
+  .bcl .nav .menu-btn { width: 44px; height: 44px; background: transparent; color: inherit; }
+  .bcl .nav .menu-btn span { width: 22px; height: 2px; top: -3.5px; }
+  .bcl .nav .menu-btn span::after { width: 22px; height: 2px; top: 7px; }
+  .bcl .nav .menu-btn[aria-expanded="true"] span { top: 0; }
+  .bcl .nav .menu-btn[aria-expanded="true"] span::after { top: 0; transform: rotate(90deg); }
+
+  /* menu open: the bar blends into the navy menu */
+  .bcl.lock .nav .bar,
+  .bcl.lock .nav.scrolled .bar,
+  .bcl.lock .nav.dark .bar,
+  .bcl.lock .nav.dark.scrolled .bar {
+    background: transparent; box-shadow: none; color: var(--beige);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}

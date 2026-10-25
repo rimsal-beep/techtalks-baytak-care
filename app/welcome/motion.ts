@@ -433,7 +433,7 @@ export function initLandingMotion(root: HTMLElement): () => void {
   const callouts = $$(".callout");
   const finalLayers = $$("#finalBg .pl");
   const darkSecs = $$("[data-dark]");
-  let chatP = 0;
+  const chatP = 0;
   let solP = 0;
   let fanP = 0;
   const secProgress = (el: HTMLElement, start = 1, end = 0) => {

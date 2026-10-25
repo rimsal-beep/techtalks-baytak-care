@@ -462,7 +462,7 @@ export function initLandingMotion(root: HTMLElement): () => void {
     // hero
     hx = lerp(hx, thx, 0.06);
     hy = lerp(hy, thy, 0.06);
-  if (sy < vh * 1.4) {
+  if (sy < vh * 1.4 && window.innerWidth > 720) {
   heroLayers.forEach((g, i) => {
     const depth = (i % 5 + 1) * 2;
     g.style.transform = `translate3d(${hx * depth}px, ${hy * depth}px, 0)`;

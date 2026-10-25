@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { Icon } from "./Svg";
 import { SCENES } from "../data/scenes";
-
+// Make the scene fill the arch instead of leaving empty bands.
+const HERO_SCENE = SCENES["mountain:gold"]
+  .replace(/\spreserveAspectRatio="[^"]*"/, "")
+  .replace("<svg", '<svg preserveAspectRatio="xMidYMid slice"');
 export default function Hero() {
   return (
   <section className="hero" id="product">

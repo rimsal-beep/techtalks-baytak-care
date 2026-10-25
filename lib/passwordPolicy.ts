@@ -1,17 +1,27 @@
-export const MIN_PASSWORD_LENGTH = 12;
+// Shared by the signup page (instant feedback) and the server action (the real check).
+// Pure TypeScript: no server-only imports, so it is safe to import in client components.
+
+export const MIN_PASSWORD_LENGTH = 6;
 export const MAX_PASSWORD_BYTES = 72;
 
 const COMMON_PASSWORDS = new Set([
-  "password1234",
-  "password12345",
-  "123456789012",
-  "1234567890123",
-  "qwertyuiop12",
-  "qwerty123456",
-  "iloveyou1234",
-  "admin1234567",
-  "welcome12345",
-  "letmein12345",
+  "123456",
+  "1234567",
+  "12345678",
+  "123456789",
+  "password",
+  "password1",
+  "password1!",
+  "password123",
+  "qwerty",
+  "qwerty123",
+  "abc123",
+  "111111",
+  "123123",
+  "letmein",
+  "welcome1",
+  "admin123",
+  "iloveyou",
 ]);
 
 export function validatePassword(

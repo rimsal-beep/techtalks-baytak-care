@@ -79,7 +79,7 @@ export async function requireVerifiedUser() {
     };
   }
 
-  if (user.role === "OWNER" && !user.emailVerifiedAt) {
+    if (!user.emailVerifiedAt) {
     return {
       success: false as const,
       error: "Please verify your email before continuing.",

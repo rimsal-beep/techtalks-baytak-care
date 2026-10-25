@@ -1,10 +1,17 @@
 "use client";
 
-import { FormEvent, Suspense, useState } from "react";
+import { FormEvent, Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signup } from "../actions/auth";
 import AuthShell from "../Components/AuthShell";
 import f from "../Components/AuthShell.module.css";
+import {
+  MIN_PASSWORD_LENGTH,
+  validatePassword,
+} from "../../lib/passwordPolicy";
+
+const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function PasswordToggleIcon({ visible }: { visible: boolean }) {
   return (
@@ -12,8 +19,10 @@ function PasswordToggleIcon({ visible }: { visible: boolean }) {
       viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
+      fill="none"
+      style={{ fill: "none" }}
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -35,51 +44,67 @@ function PasswordToggleIcon({ visible }: { visible: boolean }) {
 
 function SignupContent() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [role, setRole] = useState<"OWNER" | "CARETAKER" | "">("");
   const searchParams = useSearchParams();
 
-  function handleRoleSelect(nextRole: "OWNER" | "CARETAKER") {
-    if (nextRole === "CARETAKER" && !nextPath) {
-      setError("Caretaker registration requires an invitation link.");
-      return;
-    }
-
-    setError("");
-    setRole((currentRole) => (currentRole === nextRole ? "" : nextRole));
-  }
-
+  // The role is decided by the server from the invitation, never by this page.
   const nextParam = searchParams.get("next");
   const nextPath =
     nextParam && /^\/invite\/[a-f0-9]{64}$/.test(nextParam)
       ? nextParam
       : null;
-  const MIN_PASSWORD_LENGTH = 6;   
+
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Blocks a second submit even before React re-renders (fast double clicks).
+  // The real protection is still the server: unique email + rate limit.
+  const submitting = useRef(false);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (submitting.current) return;
+
     setError("");
 
     const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
 
     if (!trimmedName) {
       setError("Name is required.");
       return;
     }
 
-    const nameRegex = /^[\p{L}\p{M}]+(?:[\s'’-][\p{L}\p{M}]+)*$/u;
-
-    if (!nameRegex.test(trimmedName)) {
+    if (trimmedName.length > 100 || !nameRegex.test(trimmedName)) {
       setError(
         "Name can only contain letters, spaces, hyphens, and apostrophes.",
       );
+      return;
+    }
+
+    if (!trimmedEmail) {
+      setError("Email is required.");
+      return;
+    }
+
+    if (trimmedEmail.length > 254 || !emailRegex.test(trimmedEmail)) {
+      setError("Enter a valid email.");
+      return;
+    }
+
+    const passwordError = validatePassword(password, {
+      name: trimmedName,
+      email: trimmedEmail,
+    });
+
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
 
@@ -88,28 +113,46 @@ function SignupContent() {
       return;
     }
 
-    if (!role) {
-      setError("Please choose a role.");
-      return;
-    }
-
+    submitting.current = true;
     setLoading(true);
 
-    const result = await signup({
-      name: trimmedName,
-      email,
-      password,
-      role,
-      next: role === "CARETAKER" ? nextPath : null,
-    });
+    try {
+      const result = await signup({
+        name: trimmedName,
+        email: trimmedEmail,
+        password,
+        next: nextPath,
+      });
 
-    if (result.success === false) {
-      setError(result.error);
+      if (result.success === false) {
+        setError(result.error);
+        submitting.current = false;
+        setLoading(false);
+        return;
+      }
+
+      // Remember the email for the "check your email" page (this tab only,
+      // never in the URL).
+      try {
+        sessionStorage.setItem(
+          "baytak:pendingVerification",
+          JSON.stringify({
+            email: trimmedEmail.toLowerCase(),
+            at: Date.now(),
+            next: nextPath,
+          }),
+        );
+      } catch {
+        // storage unavailable: the sent page just shows an empty form
+      }
+
+      // Stay in the loading state while navigating.
+      router.push("/verify-email/sent");
+    } catch {
+      setError("Something went wrong. Please try again.");
+      submitting.current = false;
       setLoading(false);
-      return;
     }
-
-    router.push("/verify-email/sent");
   }
 
   return (
@@ -119,37 +162,23 @@ function SignupContent() {
         Join Baytak Care and start managing your property with confidence.
       </p>
 
-      <form onSubmit={handleSubmit}>
-        <div className={f.field}>
-          <span className={f.label}>I am a</span>
-
-          <div className={f.roles}>
-            <button
-              type="button"
-              onClick={() => handleRoleSelect("OWNER")}
-              aria-pressed={role === "OWNER"}
-              className={role === "OWNER" ? `${f.role} ${f.roleOn}` : f.role}
-              suppressHydrationWarning
-            >
-              <b>Owner</b>
-              <span>I have a property to look after</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleRoleSelect("CARETAKER")}
-              aria-pressed={role === "CARETAKER"}
-              className={
-                role === "CARETAKER" ? `${f.role} ${f.roleOn}` : f.role
-              }
-              suppressHydrationWarning
-            >
-              <b>Caretaker</b>
-              <span>I look after a property</span>
-            </button>
-          </div>
+      {nextPath && (
+        <div className={f.notice} role="status">
+          You&apos;re creating an account from an invitation. Use the email
+          address the invitation was sent to.
         </div>
+      )}
 
+      {/* Edge draws its own password eye. Hide it so only ours shows.
+          Inline on purpose: AuthShell.module.css stays untouched. */}
+      <style>{`
+        #password::-ms-reveal,
+        #confirmPassword::-ms-reveal {
+          display: none;
+        }
+      `}</style>
+
+      <form onSubmit={handleSubmit} noValidate>
         <div className={f.grid}>
           <div className={f.field}>
             <label className={f.label} htmlFor="name">
@@ -162,6 +191,8 @@ function SignupContent() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Enter your full name"
+              autoComplete="name"
+              maxLength={100}
               required
               suppressHydrationWarning
             />
@@ -176,9 +207,10 @@ function SignupContent() {
               id="email"
               type="email"
               value={email}
-
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
+              autoComplete="email"
+              maxLength={254}
               required
               suppressHydrationWarning
             />
@@ -196,7 +228,7 @@ function SignupContent() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-                minLength={MIN_PASSWORD_LENGTH}
+                autoComplete="new-password"
                 required
                 suppressHydrationWarning
               />
@@ -224,14 +256,16 @@ function SignupContent() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter your password"
-                minLength={MIN_PASSWORD_LENGTH}
+                autoComplete="new-password"
                 required
                 suppressHydrationWarning
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                aria-label={
+                  showConfirmPassword ? "Hide password" : "Show password"
+                }
                 aria-pressed={showConfirmPassword}
                 className={f.passwordToggle}
               >

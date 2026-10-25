@@ -17,7 +17,7 @@ export default function Nav() {
       </nav>
       <div className="right">
         <Link href="/login" className="signin">Sign in</Link>
-        <Link href="/signup" className="btn" data-magnetic="">
+       <Link href="/signup" className="btn">
           Get started
           <span className="ic">
             <Icon name="arrow" />

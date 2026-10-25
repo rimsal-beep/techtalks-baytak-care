@@ -149,19 +149,22 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
             expiresAt: Date;
             deletedAt: Date | null;
             caretakerId: string | null;
+            expectedCaretakerId: string | null;
           }[]
         >`
-          SELECT
-            i."email",
-            i."status"::text AS "status",
-            i."expiresAt",
-            p."deletedAt",
-            p."caretakerId"
-          FROM "Invitation" i
-          JOIN "Property" p ON p."id" = i."propertyId"
-          WHERE i."tokenHash" = ${tokenHash}
-          FOR UPDATE OF i, p
-        `;
+
+              SELECT
+        i."email",
+        i."status"::text AS "status",
+        i."expiresAt",
+        p."deletedAt",
+        p."caretakerId",
+        i."expectedCaretakerId"
+      FROM "Invitation" i
+      JOIN "Property" p ON p."id" = i."propertyId"
+      WHERE i."tokenHash" = ${tokenHash}
+      FOR UPDATE OF i, p
+    `;
 
         const invitation = invitations[0];
 
@@ -171,7 +174,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
           invitation.expiresAt <= new Date() ||
           invitation.email.trim().toLowerCase() !== email ||
           invitation.deletedAt !== null ||
-          invitation.caretakerId !== null
+          invitation.caretakerId !== invitation.expectedCaretakerId
         ) {
           throw new Error(INVALID_INVITATION);
         }

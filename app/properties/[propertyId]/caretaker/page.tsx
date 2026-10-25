@@ -18,7 +18,7 @@ export default async function PropertyCaretakerPage({
     redirect("/login");
   }
 
-    if (user.role !== "OWNER") {
+  if (user.role !== "OWNER") {
     redirect("/caretaker/dashboard");
   }
 
@@ -46,29 +46,40 @@ export default async function PropertyCaretakerPage({
     notFound();
   }
 
-   const requests = await prisma.maintenanceRequest.findMany({
-    where: { propertyId: property.id },
-    orderBy: { createdAt: "desc" },
+  const requests = await prisma.maintenanceRequest.findMany({
+    where: {
+      propertyId: property.id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
     take: 200,
-    select: { id: true, title: true, status: true, createdAt: true },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      createdAt: true,
+    },
   });
 
-  const pendingInvitations = !property.caretaker
-    ? await prisma.invitation.findMany({
-        where: {
-          propertyId: property.id,
-          status: "PENDING",
-          expiresAt: { gt: new Date() },
-        },
-        select: {
-          id: true,
-          email: true,
-          expiresAt: true,
-          emailSentAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
+  const pendingInvitations = await prisma.invitation.findMany({
+    where: {
+      propertyId: property.id,
+      status: "PENDING",
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    select: {
+      id: true,
+      email: true,
+      expiresAt: true,
+      emailSentAt: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
 
   return (
     <main
@@ -84,7 +95,8 @@ export default async function PropertyCaretakerPage({
       {property.city && <p>{property.city}</p>}
 
       <p>
-        Caretaker: {property.caretaker?.name || "No caretaker yet"}
+        <strong>Current caretaker:</strong>{" "}
+        {property.caretaker?.name || "No caretaker yet"}
       </p>
 
       {property.caretaker && (
@@ -107,7 +119,13 @@ export default async function PropertyCaretakerPage({
             }}
           >
             <strong>{request.title}</strong>
-            <div style={{ fontSize: "13px", color: "#666" }}>
+
+            <div
+              style={{
+                fontSize: "13px",
+                color: "#666",
+              }}
+            >
               {request.status} ·{" "}
               {new Date(request.createdAt).toLocaleDateString()}
             </div>
@@ -117,46 +135,60 @@ export default async function PropertyCaretakerPage({
 
       <hr style={{ margin: "24px 0" }} />
 
-      {!property.caretaker && (
-        <>
-          <PropertyCaretakerInvite propertyId={property.id} />
+      <h2>
+        {property.caretaker
+          ? "Invite a Replacement Caretaker"
+          : "Invite a Caretaker"}
+      </h2>
 
-          {pendingInvitations.length > 0 && (
-            <section style={{ marginTop: 32 }}>
-              <h2>Pending invitations</h2>
+      {property.caretaker && (
+        <p>
+          Inviting a replacement will not remove the current caretaker.
+          The replacement takes effect only after the new caretaker accepts.
+        </p>
+      )}
 
-              {pendingInvitations.map((invitation) => (
-                <div
-                  key={invitation.id}
-                  style={{
-                    padding: "16px 0",
-                    borderBottom: "1px solid #eee",
-                  }}
-                >
-                  <p>{invitation.email}</p>
+      <PropertyCaretakerInvite propertyId={property.id} />
 
-                  <p>
-                    Expires:{" "}
-                    {invitation.expiresAt.toLocaleDateString()}
-                  </p>
+      {pendingInvitations.length > 0 && (
+        <section style={{ marginTop: 32 }}>
+          <h2>Pending invitations</h2>
 
-                  <p>
-                    Email:{" "}
-                    {invitation.emailSentAt
-                      ? "Submitted"
-                      : "Not confirmed"}
-                  </p>
+          {pendingInvitations.map((invitation) => (
+            <div
+              key={invitation.id}
+              style={{
+                padding: "16px 0",
+                borderBottom: "1px solid #eee",
+              }}
+            >
+              <p>
+                <strong>Email:</strong> {invitation.email}
+              </p>
 
-                  <ResendInvitationButton
-                    propertyId={property.id}
-                    email={invitation.email}
-                  />
-                  <RevokeInvitationButton invitationId={invitation.id} />
-                </div>
-              ))}
-            </section>
-          )}
-        </>
+              <p>
+                <strong>Expires:</strong>{" "}
+                {invitation.expiresAt.toLocaleDateString()}
+              </p>
+
+              <p>
+                <strong>Email status:</strong>{" "}
+                {invitation.emailSentAt
+                  ? "Accepted by email server"
+                  : "Not confirmed"}
+              </p>
+
+              <ResendInvitationButton
+                propertyId={property.id}
+                email={invitation.email}
+              />
+
+              <RevokeInvitationButton
+                invitationId={invitation.id}
+              />
+            </div>
+          ))}
+        </section>
       )}
     </main>
   );

@@ -422,7 +422,7 @@ export default async function PropertyDetailsPage({
             </section>
           </div>
 
-          <PropertyCaretakerInvite propertyId={property.id} />
+          {!property.caretaker && <PropertyCaretakerInvite propertyId={property.id} />}
         </>
       )}
 

@@ -39,9 +39,6 @@ function LoginContent() {
           />
         </div>
 
-        <div style={{ margin: "0 0 12px", textAlign: "right", fontSize: "13px" }}>
-          <a href="/forgot-password" style={{ color: "#1F4E79", fontWeight: 600, textDecoration: "none" }}>Forgot password?</a>
-        </div>
         <div className={f.field}>
           <label className={f.label} htmlFor="password">
             Password
@@ -56,6 +53,10 @@ function LoginContent() {
             minLength={MIN_PASSWORD_LENGTH}
             required
           />
+        </div>
+
+        <div style={{ margin: "8px 0 16px", textAlign: "right", fontSize: "13px" }}>
+          <a href="/forgot-password" style={{ color: "#1F4E79", fontWeight: 600, textDecoration: "none" }}>Forgot password?</a>
         </div>
 
         {state.error && (

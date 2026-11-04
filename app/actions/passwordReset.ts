@@ -1,7 +1,8 @@
 "use server";
 
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit } from "@/lib/rateLimit";
+import { allowPasswordResetAttempt } from "@/lib/signupGuards";
 import { createPasswordResetToken } from "@/lib/passwordReset";
 
 type ActionState = {
@@ -25,30 +26,35 @@ export async function requestPasswordReset(
     email.length > 254 ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   ) {
+    return { message: "", error: "Please enter a valid email address." };
+  }
+
+  if (!(await allowPasswordResetAttempt())) {
     return {
       message: "",
-      error: "Please enter a valid email address.",
+      error: "Too many requests. Please wait a few minutes and try again.",
     };
   }
 
-  const rateLimit = checkRateLimit(`password-reset:${email}`);
+  // Look up the account and send the email after responding, so the answer
+  // takes the same time whether or not the account exists.
+  after(async () => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, email: true },
+      });
 
-  if (!rateLimit.allowed) {
-    return { message: NEUTRAL_MESSAGE, error: "" };
-  }
-
-  try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, email: true },
-    });
-
-    if (user) {
-      await createPasswordResetToken(user.id, user.email);
+      if (user) {
+        await createPasswordResetToken(user.id, user.email);
+      }
+    } catch (error) {
+      console.error(
+        "Password reset request failed:",
+        error instanceof Error ? error.message : "unknown error"
+      );
     }
-  } catch (error) {
-    console.error("Password reset request failed:", error);
-  }
+  });
 
   return { message: NEUTRAL_MESSAGE, error: "" };
 }

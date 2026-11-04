@@ -29,7 +29,10 @@ export default function ResetPasswordForm() {
       <p className={f.sub}>
         Choose a new password for your Baytak Care account.
       </p>
-
+      <p className={f.sub}>
+        Use at least 6 characters, with upper and lower case letters, a number
+        and a symbol.
+      </p>
       {!state.success && (
         <form action={formAction}>
           <input type="hidden" name="token" value={token} />
@@ -44,8 +47,8 @@ export default function ResetPasswordForm() {
               name="password"
               type="password"
               placeholder="Enter your new password"
-              minLength={8}
-              maxLength={128}
+              minLength={6}
+              maxLength={72}
               autoComplete="new-password"
               required
             />

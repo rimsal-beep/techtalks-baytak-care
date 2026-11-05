@@ -55,6 +55,10 @@ function LoginContent() {
           />
         </div>
 
+        <div style={{ margin: "8px 0 16px", textAlign: "right", fontSize: "13px" }}>
+          <a href="/forgot-password" style={{ color: "#1F4E79", fontWeight: 600, textDecoration: "none" }}>Forgot password?</a>
+        </div>
+
         {state.error && (
           <div className={f.error} role="alert">
             {state.error}

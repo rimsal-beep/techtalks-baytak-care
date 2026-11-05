@@ -1,4 +1,5 @@
 
+
 generator client {
   provider        = "prisma-client"
   output          = "../generated/prisma"
@@ -10,15 +11,15 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  phone        String?
-  role             UserRole
-emailVerifiedAt  DateTime?
-createdAt        DateTime @default(now())
-updatedAt        DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  email                   String   @unique
+  passwordHash            String
+  name                    String
+  phone                   String?
+  role                    UserRole
+  emailVerifiedAt         DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   ownedProperties         Property[]           @relation("PropertyOwner")
   caretakingProperties    Property[]           @relation("PropertyCaretaker")
@@ -27,6 +28,7 @@ updatedAt        DateTime @updatedAt
   activityLogs            ActivityLog[]
   sentInvitations         Invitation[]
   emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
   completedChecklistItems ChecklistItem[]      @relation("ChecklistCompletedBy")
 
   @@index([role])
@@ -62,27 +64,26 @@ model Property {
 }
 
 model Invitation {
-  id           String           @id @default(uuid())
-  email        String
-  tokenHash    String           @unique
-  status       InvitationStatus @default(PENDING)
-  expiresAt    DateTime
-  createdAt    DateTime         @default(now())
-  acceptedAt   DateTime?
-  revokedAt    DateTime?
+  id                  String           @id @default(uuid())
+  email               String
+  tokenHash           String           @unique
+  status              InvitationStatus @default(PENDING)
+  expiresAt            DateTime
+  createdAt            DateTime         @default(now())
+  acceptedAt           DateTime?
+  revokedAt            DateTime?
 
   emailAttempts Int       @default(0)
   lastEmailAt   DateTime?
   emailSentAt   DateTime?
 
-  propertyId String
+  propertyId          String
   expectedCaretakerId String?
-  property   Property @relation(fields: [propertyId], references: [id])
+  property             Property @relation(fields: [propertyId], references: [id])
 
   invitedById String
   invitedBy   User @relation(fields: [invitedById], references: [id])
 
-  // Only one pending invitation per property and normalized email.
   @@unique([propertyId, email], where: { status: "PENDING" }, map: "Invitation_one_pending_per_property_email_key")
   @@index([propertyId])
   @@index([status])
@@ -109,7 +110,6 @@ model MaintenanceRequest {
   reportedById   String
   reportedBy     User     @relation("ReportedBy", fields: [reportedById], references: [id])
 
-  // Unique key for each submission attempt by its creator.
   idempotencyKey String
 
   estimatedCost Decimal? @db.Decimal(10, 2)
@@ -139,7 +139,6 @@ model MaintenanceRequest {
 
   activityLogs ActivityLog[]
 
-  // reportedById serves as this project's creator userId.
   @@unique([reportedById, idempotencyKey])
   @@index([propertyId])
   @@index([status])
@@ -210,19 +209,30 @@ model ChecklistItem {
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
 
-  // YYYY-MM format, for example 2026-10.
   monthKey String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // One row per property, checklist item, and month.
   @@unique([propertyId, text, monthKey])
   @@index([propertyId])
   @@index([completedById])
 }
 
 model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
   id        String   @id @default(uuid())
   tokenHash String   @unique
   userId    String

@@ -165,3 +165,43 @@ export async function allowResendAttempt(): Promise<boolean> {
     return true;
   }
 }
+let passwordResetLimiter: Ratelimit | null = null;
+
+function getPasswordResetLimiter(): Ratelimit | null {
+  if (passwordResetLimiter) return passwordResetLimiter;
+
+  if (
+    !process.env.UPSTASH_REDIS_REST_URL ||
+    !process.env.UPSTASH_REDIS_REST_TOKEN
+  ) {
+    return null;
+  }
+
+  passwordResetLimiter = new Ratelimit({
+    redis: Redis.fromEnv(),
+    limiter: Ratelimit.slidingWindow(5, "15 m"),
+    prefix: "baytak:pwreset",
+  });
+
+  return passwordResetLimiter;
+}
+
+/** Per-IP limit for "forgot password" requests. Returns true when allowed. */
+export async function allowPasswordResetAttempt(): Promise<boolean> {
+  const limiter = getPasswordResetLimiter();
+
+  if (!limiter) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("Password-reset rate limiter is NOT configured (Upstash env vars missing).");
+    }
+    return true;
+  }
+
+  try {
+    const { success } = await limiter.limit(`ip:${await getClientIp()}`);
+    return success;
+  } catch (error) {
+    console.error("Rate limiter error:", error instanceof Error ? error.message : error);
+    return true;
+  }
+}
